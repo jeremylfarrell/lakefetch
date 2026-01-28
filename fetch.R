@@ -1059,6 +1059,8 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = 50) {
   }
 
   # Second pass: buffer check for unmatched sites
+  # Only match sites that are close to the SHORELINE of a lake (not just near the lake polygon)
+  # This prevents assigning points to the wrong lake when multiple lakes are nearby
   unmatched_idx <- which(is.na(sites_sf$lake_osm_id))
 
   if (length(unmatched_idx) > 0 && tolerance_m > 0) {
@@ -1067,21 +1069,24 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = 50) {
     for (i in unmatched_idx) {
       site_geom <- st_geometry(sites_sf)[i]
 
-      # Create buffer around site
-      site_buffer <- st_buffer(site_geom, dist = tolerance_m)
+      # Find distance to the BOUNDARY (shoreline) of each lake, not just the polygon
+      # This ensures we only match sites that are genuinely close to a lake edge
+      shoreline_distances <- sapply(seq_len(nrow(water_polygons)), function(j) {
+        lake_boundary <- tryCatch({
+          st_boundary(water_polygons[j, ])
+        }, error = function(e) {
+          st_cast(water_polygons[j, ], "MULTILINESTRING")
+        })
+        as.numeric(st_distance(site_geom, lake_boundary))
+      })
 
-      # Find lakes that intersect the buffer
-      intersects <- st_intersects(site_buffer, water_polygons)[[1]]
+      # Find lakes within tolerance distance of their shoreline
+      within_tolerance <- which(shoreline_distances <= tolerance_m)
 
-      if (length(intersects) > 0) {
-        # If multiple lakes, pick the nearest one
-        if (length(intersects) > 1) {
-          candidate_lakes <- water_polygons[intersects, ]
-          nearest_idx <- st_nearest_feature(site_geom, candidate_lakes)
-          lake_match <- candidate_lakes[nearest_idx, ]
-        } else {
-          lake_match <- water_polygons[intersects[1], ]
-        }
+      if (length(within_tolerance) > 0) {
+        # Pick the lake with the closest shoreline
+        closest_idx <- within_tolerance[which.min(shoreline_distances[within_tolerance])]
+        lake_match <- water_polygons[closest_idx, ]
 
         sites_sf$lake_osm_id[i] <- lake_match$osm_id
         sites_sf$lake_name[i] <- lake_match$name
@@ -1106,7 +1111,37 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = 50) {
     cat("    Unmatched:", unmatched, "\n")
   }
 
-  # Clean up lake names
+  # Clean up lake names - look up from water_polygons if name is NA
+  for (i in which(is.na(sites_sf$lake_name) & !is.na(sites_sf$lake_osm_id))) {
+    lake_id <- sites_sf$lake_osm_id[i]
+    lake_area <- sites_sf$lake_area_km2[i]
+
+    # First try: Find any polygon with this osm_id that has a name
+    matching_polys <- water_polygons[water_polygons$osm_id == lake_id, ]
+    if (nrow(matching_polys) > 0) {
+      poly_names <- matching_polys$name[!is.na(matching_polys$name) & matching_polys$name != ""]
+      if (length(poly_names) > 0) {
+        sites_sf$lake_name[i] <- poly_names[1]
+        next
+      }
+    }
+
+    # Second try: Find another lake with very similar area (likely duplicate polygon)
+    # This handles cases where OSM has the same lake with different IDs
+    if (!is.na(lake_area) && lake_area > 0) {
+      area_tolerance <- 0.01  # 1% tolerance
+      similar_area_idx <- which(
+        abs(water_polygons$area_km2 - lake_area) / lake_area < area_tolerance &
+        !is.na(water_polygons$name) &
+        water_polygons$name != ""
+      )
+      if (length(similar_area_idx) > 0) {
+        sites_sf$lake_name[i] <- water_polygons$name[similar_area_idx[1]]
+      }
+    }
+  }
+
+  # Final fallback for any still-missing names
   sites_sf$lake_name <- ifelse(
     is.na(sites_sf$lake_name) & !is.na(sites_sf$lake_osm_id),
     paste0("Unknown Lake (ID: ", sites_sf$lake_osm_id, ")"),
@@ -1196,12 +1231,17 @@ calc_orbital <- function(fetch_m, wind_speed = DEFAULT_WIND_SPEED_MS) {
 }
 
 # Buffer point inward from shore
+# Only nudges points that are already close to the shoreline (within buffer distance)
+# Points far from shore are left at their original location
 nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = BUFFER_DISTANCE_M) {
+
+  # Extract the sfg point from sfc if needed (for consistent return type)
+  original_point <- if (inherits(point_geom, "sfc")) point_geom[[1]] else point_geom
 
   # Handle empty or invalid geometries
   if (is.null(poly_boundary) || st_is_empty(poly_boundary) ||
       is.null(poly_full) || st_is_empty(poly_full)) {
-    return(point_geom)
+    return(original_point)
   }
 
   is_inside <- length(st_intersects(point_geom, poly_full)[[1]]) > 0
@@ -1211,14 +1251,14 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = BUFFER_DIS
   }, error = function(e) NULL)
 
   if (is.null(nearest_on_shore) || length(nearest_on_shore) == 0) {
-    return(point_geom)
+    return(original_point)
   }
 
   coords <- st_coordinates(nearest_on_shore)
 
   # Check that we have valid coordinates (need at least 2 points)
   if (is.null(coords) || nrow(coords) < 2) {
-    return(point_geom)
+    return(original_point)
   }
 
   p_x <- coords[1, 1]; p_y <- coords[1, 2]
@@ -1228,7 +1268,13 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = BUFFER_DIS
   dy <- p_y - s_y
   len <- sqrt(dx^2 + dy^2)
 
-  if (len == 0) return(point_geom)
+  if (len == 0) return(original_point)
+
+  # Only nudge points that are close to the shoreline (within buffer distance)
+  # Points far from shore are left at their original location
+  if (len > dist) {
+    return(original_point)
+  }
 
   if (!is_inside) {
     dx <- -dx

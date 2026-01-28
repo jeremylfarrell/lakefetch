@@ -1,0 +1,15 @@
+^\.git$
+^\.gitignore$
+^\.Rhistory$
+^.*\.Rproj$
+^\.Rproj\.user$
+^fetch\.R$
+^.*_fetch\.csv$
+^.*_fetch\.gpkg$
+^fetch_results\.csv$
+^fetch_results\.gpkg$
+^.*\.png$
+^2020 Chautauqua Lake\.csv$
+^adk\.csv$
+^\.Rcheck$
+^.*\.tar\.gz$
