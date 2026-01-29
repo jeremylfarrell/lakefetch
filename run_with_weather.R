@@ -40,7 +40,8 @@ if (!file.exists(INPUT_FILE)) {
 }
 
 # Water depth for orbital velocity calculation (meters)
-WATER_DEPTH_M <- 5
+# Set to NULL to auto-estimate from HydroLAKES or lake area
+WATER_DEPTH_M <- NULL
 
 # ------------------------------------------------------------------------------
 # Run the analysis
@@ -59,14 +60,20 @@ lake <- get_lake_boundary(sites)
 cat("\nCalculating fetch...\n")
 results <- fetch_calculate(sites, lake, add_context = FALSE)
 
-# Step 4: Add weather context
+# Step 4: Add lake depth estimates
+# This will try HydroLAKES first, then estimate from lake area
+cat("\nEstimating lake depths...\n")
+results_with_depth <- add_lake_depth(results$results, results$lakes)
+
+# Step 5: Add weather context
 # This fetches historical weather from Open-Meteo API
+# Uses the depth_mean_m column from Step 4 for wave calculations
 cat("\nFetching historical weather data...\n")
 results_with_weather <- add_weather_context(
-  results$results,
+  results_with_depth,
   datetime_col = "datetime",
   windows_hours = c(24, 72, 168),  # 24h, 3-day, 7-day windows
-  depth_m = WATER_DEPTH_M
+  depth_m = WATER_DEPTH_M  # NULL = use estimated depth
 )
 
 # ------------------------------------------------------------------------------
@@ -77,7 +84,9 @@ cat("\n=== Results with Weather Context ===\n")
 
 # Key columns to display
 key_cols <- c(
-  "Site", "datetime", "lake_name", "exposure_category",
+  "Site", "site_name", "datetime", "lake_name", "exposure_category",
+  # Depth
+  "depth_mean_m", "depth_source",
   # Fetch
   "fetch_effective",
   # Wind at sample time
@@ -124,6 +133,11 @@ cat("\nDone! Results saved with", ncol(output_df), "columns.\n")
 
 cat("\n=== Weather Column Guide ===\n")
 cat("
+Lake Depth:
+  depth_mean_m     - Estimated mean depth (meters)
+  depth_max_m      - Estimated maximum depth (meters)
+  depth_source     - Source: 'hydrolakes', 'empirical', or 'user'
+
 Wind Metrics (for each time window: 24h, 3d, 7d):
   wind_mean_*      - Mean wind speed (m/s)
   wind_max_*       - Maximum wind speed (m/s)

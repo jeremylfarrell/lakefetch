@@ -338,11 +338,25 @@ calculate_cumulative_wave_energy <- function(fetch_by_direction, weather_df,
 #' @export
 add_weather_context <- function(fetch_results, datetime_col = "datetime",
                                  windows_hours = c(24, 72, 168),
-                                 depth_m = 5) {
+                                 depth_m = NULL) {
 
   if (!requireNamespace("jsonlite", quietly = TRUE)) {
     stop("Package 'jsonlite' is required for weather data.\n",
          "Install with: install.packages('jsonlite')")
+  }
+
+  # Handle depth: use provided depth, per-site depth column, or default
+  if (is.null(depth_m)) {
+    if ("depth_mean_m" %in% names(fetch_results)) {
+      message("Using lake depth from depth_mean_m column")
+      use_per_site_depth <- TRUE
+    } else {
+      message("No depth provided, using default 5m for wave calculations")
+      depth_m <- 5
+      use_per_site_depth <- FALSE
+    }
+  } else {
+    use_per_site_depth <- FALSE
   }
 
   # Check for datetime column
@@ -402,10 +416,18 @@ add_weather_context <- function(fetch_results, datetime_col = "datetime",
       fetch_by_dir <- as.numeric(sf::st_drop_geometry(fetch_results[i, fetch_cols]))
       names(fetch_by_dir) <- fetch_cols
 
+      # Get depth for this site
+      site_depth <- if (use_per_site_depth) {
+        d <- fetch_results$depth_mean_m[i]
+        if (is.na(d)) 5 else d  # Default to 5m if NA
+      } else {
+        depth_m
+      }
+
       for (hours in windows_hours) {
         window_name <- if (hours == 24) "24h" else if (hours == 72) "3d" else paste0(hours/24, "d")
         wave_metrics <- calculate_cumulative_wave_energy(
-          fetch_by_dir, weather, sample_dt, hours, depth_m
+          fetch_by_dir, weather, sample_dt, hours, site_depth
         )
         metrics[[paste0("wave_energy_", window_name)]] <- wave_metrics$cumulative_wave_energy
         metrics[[paste0("wave_height_mean_", window_name)]] <- wave_metrics$mean_wave_height_m
@@ -413,7 +435,7 @@ add_weather_context <- function(fetch_results, datetime_col = "datetime",
       }
 
       # Add orbital velocity for the 3-day window
-      wave_3d <- calculate_cumulative_wave_energy(fetch_by_dir, weather, sample_dt, 72, depth_m)
+      wave_3d <- calculate_cumulative_wave_energy(fetch_by_dir, weather, sample_dt, 72, site_depth)
       metrics$orbital_velocity_mean_3d <- wave_3d$mean_orbital_velocity_ms
     }
 

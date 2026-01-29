@@ -10,6 +10,8 @@ Description: Calculates fetch (open water distance) and wave exposure metrics
     calculates directional fetch using ray-casting, and optionally integrates
     with NHD (National Hydrography Dataset) for hydrological context including
     outlet/inlet locations, watershed area, and connectivity classification.
+    Can estimate lake depth from HydroLAKES database or empirical relationships,
+    and integrate historical weather data for cumulative wave energy calculations.
     Includes an interactive Shiny app for visualization.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -21,6 +23,8 @@ Imports:
     ggplot2
 Suggests:
     nhdplusTools,
+    hydrolinks,
+    jsonlite,
     shiny,
     leaflet,
     viridis,
