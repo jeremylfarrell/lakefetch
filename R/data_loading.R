@@ -115,45 +115,6 @@ load_sites <- function(x) {
     stringsAsFactors = FALSE
   )
 
-  # Look for datetime column
-  datetime_patterns <- c("^datetime$", "^date[_.]?time$", "^sample[_.]?date",
-                          "^sample[_.]?time", "^date$", "^time$", "^timestamp$")
-  datetime_col_idx <- NA
-  for (pattern in datetime_patterns) {
-    idx <- grep(pattern, col_names_lower)[1]
-    if (!is.na(idx)) {
-      datetime_col_idx <- idx
-      break
-    }
-  }
-
-  if (!is.na(datetime_col_idx)) {
-    datetime_col_name <- names(sites_raw)[datetime_col_idx]
-    datetime_raw <- sites_raw[[datetime_col_idx]]
-
-    # Try to parse datetime
-    datetime_parsed <- tryCatch({
-      as.POSIXct(datetime_raw)
-    }, error = function(e) {
-      # Try common formats
-      formats <- c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
-                   "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M", "%m/%d/%Y",
-                   "%d-%m-%Y %H:%M:%S", "%d-%m-%Y")
-      for (fmt in formats) {
-        parsed <- tryCatch(as.POSIXct(datetime_raw, format = fmt), error = function(e) NULL)
-        if (!is.null(parsed) && !all(is.na(parsed))) return(parsed)
-      }
-      return(NULL)
-    })
-
-    if (!is.null(datetime_parsed) && !all(is.na(datetime_parsed))) {
-      sites_clean$datetime <- datetime_parsed[!na_mask]
-      message("  Detected datetime column: ", datetime_col_name)
-    } else {
-      message("  Warning: Could not parse datetime column '", datetime_col_name, "'")
-    }
-  }
-
   # Report problems
   na_mask <- is.na(sites_clean$latitude) | is.na(sites_clean$longitude)
   if (any(na_mask)) {
@@ -183,6 +144,50 @@ load_sites <- function(x) {
 
   if (nrow(sites_clean) == 0) {
     stop("No valid coordinates remaining after cleaning")
+  }
+
+  # Look for datetime column
+  datetime_patterns <- c("^datetime$", "^date[_.]?time$", "^sample[_.]?date",
+                          "^sample[_.]?time", "^date$", "^time$", "^timestamp$")
+  datetime_col_idx <- NA
+  for (pattern in datetime_patterns) {
+    idx <- grep(pattern, col_names_lower)[1]
+    if (!is.na(idx)) {
+      datetime_col_idx <- idx
+      break
+    }
+  }
+
+  if (!is.na(datetime_col_idx)) {
+    datetime_col_name <- names(sites_raw)[datetime_col_idx]
+    datetime_raw <- sites_raw[[datetime_col_idx]]
+
+    # Get indices of valid rows (matching sites_clean)
+    valid_sites <- sites_clean$Site
+    valid_idx <- which(Site %in% valid_sites)
+
+    # Try to parse datetime
+    datetime_parsed <- tryCatch({
+      as.POSIXct(datetime_raw)
+    }, error = function(e) {
+      # Try common formats
+      formats <- c("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
+                   "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M", "%m/%d/%Y",
+                   "%d-%m-%Y %H:%M:%S", "%d-%m-%Y")
+      for (fmt in formats) {
+        parsed <- tryCatch(as.POSIXct(datetime_raw, format = fmt), error = function(e) NULL)
+        if (!is.null(parsed) && !all(is.na(parsed))) return(parsed)
+      }
+      return(NULL)
+    })
+
+    if (!is.null(datetime_parsed) && !all(is.na(datetime_parsed))) {
+      # Match datetime to cleaned sites by Site name
+      sites_clean$datetime <- datetime_parsed[match(sites_clean$Site, Site)]
+      message("  Detected datetime column: ", datetime_col_name)
+    } else {
+      message("  Warning: Could not parse datetime column '", datetime_col_name, "'")
+    }
   }
 
   # Detect location name from columns
