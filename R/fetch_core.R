@@ -185,8 +185,18 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
     return(NULL)
   }
 
-  message("  Processing ", n_sites, " sites in lake: ",
+  message("  Processing ", n_sites, " samples in lake: ",
           ifelse(is.null(lake_name) || is.na(lake_name), lake_osm_id, lake_name))
+
+  # Optimize: identify unique coordinates to avoid recalculating fetch
+  coords_all <- sf::st_coordinates(sites)
+  coord_key <- paste(round(coords_all[, 1], 6), round(coords_all[, 2], 6), sep = "_")
+  unique_coords <- !duplicated(coord_key)
+  n_unique <- sum(unique_coords)
+
+  if (n_unique < n_sites) {
+    message("    (", n_unique, " unique locations, ", n_sites - n_unique, " repeat samples)")
+  }
 
   # If multiple polygons (duplicates), union them into one
   if (nrow(lake_polygon) > 1) {
@@ -212,29 +222,41 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
     })
   })
 
-  # Buffer all sites inward
+  # Buffer all sites inward (only unique locations need nudging)
   sites_buffered <- sites
   new_geoms <- vector("list", n_sites)
+  nudged_cache <- list()  # Cache nudged positions by coord_key
 
   for (i in seq_len(n_sites)) {
-    new_geoms[[i]] <- nudge_inward(sf::st_geometry(sites)[i],
-                                    lake_boundary,
-                                    lake_polygon)
+    key <- coord_key[i]
+    if (is.null(nudged_cache[[key]])) {
+      # First time seeing this coordinate - calculate nudge
+      nudged_cache[[key]] <- nudge_inward(sf::st_geometry(sites)[i],
+                                           lake_boundary,
+                                           lake_polygon)
+    }
+    new_geoms[[i]] <- nudged_cache[[key]]
   }
 
   sf::st_geometry(sites_buffered) <- sf::st_sfc(new_geoms, crs = utm_epsg)
 
-  # Calculate fetch
+  # Calculate fetch (only for unique coordinates)
   angle_res <- get_opt("angle_resolution_deg")
   angles <- seq(0, 360 - angle_res, by = angle_res)
 
+  fetch_cache <- list()  # Cache fetch results by coord_key
   fetch_list <- vector("list", n_sites)
 
   for (i in seq_len(n_sites)) {
-    fetch_list[[i]] <- get_highres_fetch(sites_buffered[i, ],
-                                          lake_boundary,
-                                          lake_polygon,
-                                          angles)
+    key <- coord_key[i]
+    if (is.null(fetch_cache[[key]])) {
+      # First time seeing this coordinate - calculate fetch
+      fetch_cache[[key]] <- get_highres_fetch(sites_buffered[i, ],
+                                               lake_boundary,
+                                               lake_polygon,
+                                               angles)
+    }
+    fetch_list[[i]] <- fetch_cache[[key]]
   }
 
   # Convert to data frame

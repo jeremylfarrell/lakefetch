@@ -99,19 +99,20 @@ load_sites <- function(x) {
   # Find Site column or create one
   site_col_idx <- grep("^site$", col_names_lower)[1]
   if (!is.na(site_col_idx)) {
-    Site <- as.character(sites_raw[[names(sites_raw)[site_col_idx]]])
+    site_name <- as.character(sites_raw[[names(sites_raw)[site_col_idx]]])
   } else if ("Site" %in% names(sites_raw)) {
-    Site <- as.character(sites_raw$Site)
+    site_name <- as.character(sites_raw$Site)
   } else {
-    Site <- paste0("Site_", seq_len(nrow(sites_raw)))
+    site_name <- paste0("Site_", seq_len(nrow(sites_raw)))
     message("  No 'Site' column found, created generic names")
   }
 
-  # Create cleaned data frame
+  # Create cleaned data frame with original site name preserved
   sites_clean <- data.frame(
-    Site = Site,
+    site_name = site_name,
     latitude = latitude,
     longitude = longitude,
+    row_id = seq_len(nrow(sites_raw)),
     stringsAsFactors = FALSE
   )
 
@@ -137,16 +138,7 @@ load_sites <- function(x) {
     sites_clean <- sites_clean[!invalid_lon, ]
   }
 
-  # Remove duplicates
-  sites_clean <- sites_clean[!duplicated(sites_clean$Site), ]
-
-  message("  Final valid sites: ", nrow(sites_clean))
-
-  if (nrow(sites_clean) == 0) {
-    stop("No valid coordinates remaining after cleaning")
-  }
-
-  # Look for datetime column
+  # Look for datetime column BEFORE creating unique IDs
   datetime_patterns <- c("^datetime$", "^date[_.]?time$", "^sample[_.]?date",
                           "^sample[_.]?time", "^date$", "^time$", "^timestamp$")
   datetime_col_idx <- NA
@@ -158,15 +150,12 @@ load_sites <- function(x) {
     }
   }
 
+  # Parse datetime if found
+  datetime_parsed <- NULL
   if (!is.na(datetime_col_idx)) {
     datetime_col_name <- names(sites_raw)[datetime_col_idx]
     datetime_raw <- sites_raw[[datetime_col_idx]]
 
-    # Get indices of valid rows (matching sites_clean)
-    valid_sites <- sites_clean$Site
-    valid_idx <- which(Site %in% valid_sites)
-
-    # Try to parse datetime
     datetime_parsed <- tryCatch({
       as.POSIXct(datetime_raw)
     }, error = function(e) {
@@ -182,12 +171,50 @@ load_sites <- function(x) {
     })
 
     if (!is.null(datetime_parsed) && !all(is.na(datetime_parsed))) {
-      # Match datetime to cleaned sites by Site name
-      sites_clean$datetime <- datetime_parsed[match(sites_clean$Site, Site)]
+      # Add datetime to sites_clean using row_id to match
+      sites_clean$datetime <- datetime_parsed[sites_clean$row_id]
       message("  Detected datetime column: ", datetime_col_name)
     } else {
       message("  Warning: Could not parse datetime column '", datetime_col_name, "'")
     }
+  }
+
+  # Create unique Site identifiers
+  # If we have datetime, use site_name + date; otherwise use site_name + row number
+  if ("datetime" %in% names(sites_clean) && !all(is.na(sites_clean$datetime))) {
+    # Use date portion for ID (multiple samples same day at same site get numbered)
+    date_str <- format(sites_clean$datetime, "%Y%m%d")
+    date_str[is.na(date_str)] <- "nodate"
+
+    # Create base ID
+    base_id <- paste0(sites_clean$site_name, "_", date_str)
+
+    # Handle duplicates within same site+date by adding sequence number
+    sites_clean$Site <- ave(base_id, base_id, FUN = function(x) {
+      if (length(x) == 1) return(x)
+      paste0(x, "_", seq_along(x))
+    })
+  } else {
+    # No datetime - use row numbers for uniqueness
+    sites_clean$Site <- paste0(sites_clean$site_name, "_", sites_clean$row_id)
+  }
+
+  # Remove true duplicates (same Site ID, same coordinates)
+  dup_key <- paste(sites_clean$Site, sites_clean$latitude, sites_clean$longitude, sep = "_")
+  sites_clean <- sites_clean[!duplicated(dup_key), ]
+
+  # Clean up: remove row_id and reorder columns so Site is first
+  sites_clean$row_id <- NULL
+  col_order <- c("Site", "site_name", "latitude", "longitude")
+  if ("datetime" %in% names(sites_clean)) {
+    col_order <- c(col_order, "datetime")
+  }
+  sites_clean <- sites_clean[, col_order]
+
+  message("  Final valid samples: ", nrow(sites_clean))
+
+  if (nrow(sites_clean) == 0) {
+    stop("No valid coordinates remaining after cleaning")
   }
 
   # Detect location name from columns

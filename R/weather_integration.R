@@ -377,7 +377,13 @@ add_weather_context <- function(fetch_results, datetime_col = "datetime",
     lon <- coords[i, 1]
     sample_dt <- dt[i]
 
-    message("  Site ", i, "/", nrow(fetch_results), ": ", fetch_results$Site[i])
+    # Display site_name if available, otherwise Site
+    display_name <- if ("site_name" %in% names(fetch_results)) {
+      fetch_results$site_name[i]
+    } else {
+      fetch_results$Site[i]
+    }
+    message("  Sample ", i, "/", nrow(fetch_results), ": ", display_name)
 
     # Fetch weather history
     weather <- fetch_weather_history(lat, lon, sample_dt, days_before = max(windows_hours) / 24 + 1)

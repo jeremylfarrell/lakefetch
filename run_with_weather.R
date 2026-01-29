@@ -23,7 +23,7 @@ devtools::load_all(".")
 # ------------------------------------------------------------------------------
 
 # Your CSV file with lat, lon, and datetime columns
-INPUT_FILE <- "your_data_with_dates.csv"
+INPUT_FILE <- "btl.csv"
 
 # Example: Create sample data if you don't have a file yet
 # This creates a test dataset - replace with your actual file
