@@ -3,6 +3,7 @@
 .Rapp.history
 .RData
 .Ruserdata
+.Renviron
 
 # R package build
 *.tar.gz
