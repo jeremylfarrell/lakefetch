@@ -19,15 +19,14 @@ Depends: R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
-    sf,
-    osmdata,
-    ggplot2
+    sf (>= 1.0-0),
+    osmdata (>= 0.2.0),
+    ggplot2 (>= 3.0.0)
 Suggests:
     nhdplusTools,
     jsonlite,
     shiny,
     leaflet,
-    viridis,
     base64enc,
     parallel,
     knitr,
