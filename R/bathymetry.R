@@ -178,6 +178,19 @@ estimate_depth_empirical <- function(lake_area_km2) {
 #'
 #' @return fetch_results with added depth columns
 #'
+#' @examples
+#' \dontrun{
+#' # After running fetch_calculate
+#' results <- fetch_calculate(sites, lake)
+#'
+#' # Add depth estimates
+#' results$results <- add_lake_depth(results$results, results$lakes)
+#'
+#' # Or provide known depths
+#' depths <- c("12345" = 15.5)  # lake_osm_id = depth in meters
+#' results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
+#' }
+#'
 #' @export
 add_lake_depth <- function(fetch_results, lakes, user_depths = NULL) {
 

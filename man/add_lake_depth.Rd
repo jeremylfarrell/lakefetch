@@ -20,3 +20,17 @@ fetch_results with added depth columns
 Looks up or estimates depth for each lake in the fetch results and
 adds depth columns.
 }
+\examples{
+\dontrun{
+# After running fetch_calculate
+results <- fetch_calculate(sites, lake)
+
+# Add depth estimates
+results$results <- add_lake_depth(results$results, results$lakes)
+
+# Or provide known depths
+depths <- c("12345" = 15.5)  # lake_osm_id = depth in meters
+results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
+}
+
+}

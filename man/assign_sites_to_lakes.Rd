@@ -19,3 +19,20 @@ sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 \description{
 Perform spatial join to assign each site to its containing lake polygon.
 }
+\examples{
+\dontrun{
+# After downloading lake boundaries
+lake_data <- get_lake_boundary(sites)
+
+# Assign sites to their containing lakes
+sites_assigned <- assign_sites_to_lakes(
+  lake_data$sites,
+  lake_data$all_lakes,
+  tolerance_m = 50
+)
+
+# Check assignments
+table(sites_assigned$lake_name)
+}
+
+}

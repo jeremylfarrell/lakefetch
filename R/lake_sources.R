@@ -370,6 +370,22 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #'
 #' @return sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 #'
+#' @examples
+#' \dontrun{
+#' # After downloading lake boundaries
+#' lake_data <- get_lake_boundary(sites)
+#'
+#' # Assign sites to their containing lakes
+#' sites_assigned <- assign_sites_to_lakes(
+#'   lake_data$sites,
+#'   lake_data$all_lakes,
+#'   tolerance_m = 50
+#' )
+#'
+#' # Check assignments
+#' table(sites_assigned$lake_name)
+#' }
+#'
 #' @export
 assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) {
 
