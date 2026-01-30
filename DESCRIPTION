@@ -3,8 +3,6 @@ Title: Calculate Fetch and Wave Exposure for Lake Sampling Points
 Version: 0.1.0
 Authors@R:
     person("Jeremy", "Farrell", email = "farrej2@rpi.edu", role = c("aut", "cre"))
-Author: Jeremy Farrell
-Maintainer: Jeremy Farrell <farrej2@rpi.edu>
 Description: Calculates fetch (open water distance) and wave exposure metrics
     for lake sampling points. Downloads lake boundaries from OpenStreetMap,
     calculates directional fetch using ray-casting, and optionally integrates
@@ -17,7 +15,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
 LazyData: true
-Depends: R (>= 3.5.0)
+Depends: R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:

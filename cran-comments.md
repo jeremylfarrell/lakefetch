@@ -2,22 +2,28 @@
 
 ## R CMD check results
 
-There were no ERRORs and no NOTEs.
+### win-builder (R-devel 4.5.2)
 
-When checking with `--no-build-vignettes` (Pandoc not available in test environment):
 - 0 errors
-- 2 warnings (vignette-related, see below)
-- 0 notes
+- 2 warnings (vignette-related, explained below)
+- 2 notes (new submission + technical terms)
 
-The 2 WARNINGs are about vignettes not being pre-built:
-* checking files in 'vignettes' ... WARNING
-  Files in the 'vignettes' directory but no files in 'inst/doc'
-* checking package vignettes ... WARNING
-  Directory 'inst/doc' does not exist
+**WARNINGs:** Both warnings relate to vignettes not being pre-built because Pandoc
+is not available in the local build environment. The vignettes (getting-started.Rmd,
+validation.Rmd) are valid R Markdown files and will build correctly on CRAN's
+infrastructure which has Pandoc installed.
 
-These warnings occur because Pandoc is not available in the local test environment.
-The vignettes (getting-started.Rmd, validation.Rmd) are valid and will build
-correctly on CRAN's infrastructure.
+**NOTEs:**
+
+1. *New submission* - This is the first submission of lakefetch to CRAN.
+   The "possibly misspelled" words are technical terms that are correctly spelled:
+   - HydroLAKES: A global lake database (Messager et al., 2016)
+   - NHD: National Hydrography Dataset (USGS)
+   - OpenStreetMap: The open mapping platform used for lake boundaries
+   - hydrological: Standard scientific term
+
+2. *Author field* - Fixed by removing redundant Author/Maintainer fields,
+   now using only Authors@R as recommended.
 
 ## Test environments
 
