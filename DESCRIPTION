@@ -2,7 +2,7 @@ Package: lakefetch
 Title: Calculate Fetch and Wave Exposure for Lake Sampling Points
 Version: 0.1.0
 Authors@R:
-    person("Jeremy", "Farrell", email = "farrej2@rpi.edu", role = c("aut", "cre"))
+    person("Jeremy Lynch", "Farrell", email = "farrej2@rpi.edu", role = c("aut", "cre"))
 Description: Calculates fetch (open water distance) and wave exposure metrics
     for lake sampling points. Downloads lake boundaries from OpenStreetMap,
     calculates directional fetch using ray-casting, and optionally integrates
