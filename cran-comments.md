@@ -1,13 +1,18 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 2 notes
 
-* This is a new submission.
+**NOTE 1:** New submission, with "possibly misspelled" words:
+- HydroLAKES, Hydrography, NHD, OpenStreetMap, hydrological
+- These are correct: HydroLAKES is a global lake database, NHD is the National Hydrography Dataset, OpenStreetMap is the mapping service
+
+**NOTE 2:** Non-standard file 'cran-comments.md' at top level
+- This file is for CRAN reviewer communication (now added to .Rbuildignore)
 
 ## Test environments
 
 * Local: Windows 11, R 4.4.1
-* GitHub Actions: ubuntu-latest (release), windows-latest (release), macOS-latest (release)
+* win-builder: Windows Server 2022, R 4.5.2 (2025-10-31 ucrt)
 
 ## Downstream dependencies
 

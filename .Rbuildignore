@@ -15,3 +15,4 @@
 ^Meta$
 ^\.Renviron$
 ^working$
+^cran-comments\.md$
