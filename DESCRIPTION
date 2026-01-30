@@ -2,9 +2,9 @@ Package: lakefetch
 Title: Calculate Fetch and Wave Exposure for Lake Sampling Points
 Version: 0.1.0
 Authors@R:
-    person("Jeremy", "User", email = "jeremy@example.com", role = c("aut", "cre"))
-Author: Jeremy User
-Maintainer: Jeremy User <jeremy@example.com>
+    person("Jeremy", "Farrell", email = "farrej2@rpi.edu", role = c("aut", "cre"))
+Author: Jeremy Farrell
+Maintainer: Jeremy Farrell <farrej2@rpi.edu>
 Description: Calculates fetch (open water distance) and wave exposure metrics
     for lake sampling points. Downloads lake boundaries from OpenStreetMap,
     calculates directional fetch using ray-casting, and optionally integrates
@@ -15,6 +15,8 @@ Description: Calculates fetch (open water distance) and wave exposure metrics
     Includes an interactive Shiny app for visualization.
 License: MIT + file LICENSE
 Encoding: UTF-8
+LazyData: true
+Depends: R (>= 3.5.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
@@ -23,7 +25,6 @@ Imports:
     ggplot2
 Suggests:
     nhdplusTools,
-    hydrolinks,
     jsonlite,
     shiny,
     leaflet,
@@ -31,7 +32,9 @@ Suggests:
     base64enc,
     parallel,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/user/lakefetch
-BugReports: https://github.com/user/lakefetch/issues
+URL: https://github.com/jeremylfarrell/lakefetch
+BugReports: https://github.com/jeremylfarrell/lakefetch/issues

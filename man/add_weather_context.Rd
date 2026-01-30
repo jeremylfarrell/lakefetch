@@ -8,7 +8,7 @@ add_weather_context(
   fetch_results,
   datetime_col = "datetime",
   windows_hours = c(24, 72, 168),
-  depth_m = 5
+  depth_m = NULL
 )
 }
 \arguments{

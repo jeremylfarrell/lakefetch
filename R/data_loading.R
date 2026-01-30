@@ -203,11 +203,28 @@ load_sites <- function(x) {
   dup_key <- paste(sites_clean$Site, sites_clean$latitude, sites_clean$longitude, sep = "_")
   sites_clean <- sites_clean[!duplicated(dup_key), ]
 
+  # Preserve lake name column if present (for name-based matching)
+  lake_name_patterns <- c("^lake[._]?name$", "^lakename$", "^lake$", "^waterbody$", "^water[._]?body$")
+  for (pattern in lake_name_patterns) {
+    lake_col_idx <- grep(pattern, col_names_lower)[1]
+    if (!is.na(lake_col_idx)) {
+      lake_col_name <- names(sites_raw)[lake_col_idx]
+      # Use row_id to match back to original data (before row_id is removed)
+      row_ids <- sites_clean$row_id
+      sites_clean$lake.name <- as.character(sites_raw[[lake_col_name]][row_ids])
+      message("  Preserved lake name column: ", lake_col_name)
+      break
+    }
+  }
+
   # Clean up: remove row_id and reorder columns so Site is first
   sites_clean$row_id <- NULL
   col_order <- c("Site", "site_name", "latitude", "longitude")
   if ("datetime" %in% names(sites_clean)) {
     col_order <- c(col_order, "datetime")
+  }
+  if ("lake.name" %in% names(sites_clean)) {
+    col_order <- c(col_order, "lake.name")
   }
   sites_clean <- sites_clean[, col_order]
 

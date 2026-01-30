@@ -1,0 +1,33 @@
+# R files
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+
+# R package build
+*.tar.gz
+*.Rcheck/
+.Rproj.user/
+
+# IDE
+*.Rproj
+.vscode/
+.idea/
+
+# Output files
+*.html
+*.pdf
+inst/doc/
+
+# Data files (user-specific)
+*.csv
+!data-raw/*.csv
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*~
+\#*\#
+.\#*

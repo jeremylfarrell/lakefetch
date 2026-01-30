@@ -12,7 +12,7 @@
 #' @importFrom ggplot2 ggplot aes geom_sf geom_bar geom_hline scale_color_manual
 #' @importFrom ggplot2 scale_fill_manual coord_sf labs theme_minimal theme
 #' @importFrom ggplot2 element_text
-#' @importFrom stats setNames
+#' @importFrom stats setNames ave
 #' @importFrom utils read.csv
 #' @importFrom graphics par plot lines polygon text title
 #' @importFrom grDevices rgb png dev.off
@@ -87,8 +87,9 @@ NULL
 }
 
 # Suppress R CMD check notes about undefined global variables
-# These are column names used in ggplot2 aes() and dplyr operations
+# These are column names used in ggplot2 aes() and dplyr operations,
+# plus shiny functions used in reactive contexts
 utils::globalVariables(c(
-"exposure_category", "fetch_effective", "Site", "Distance", "Angle",
-  "lake_name", "osm_id", "area_km2", ".data"
+  "exposure_category", "fetch_effective", "Site", "Distance", "Angle",
+  "lake_name", "osm_id", "area_km2", ".data", "req"
 ))

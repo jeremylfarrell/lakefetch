@@ -106,62 +106,11 @@ if (!is.null(user_depth) && !is.na(user_depth) && user_depth > 0) {
 #'
 #' @noRd
 try_hydrolakes_lookup <- function(lake_polygon, lake_area_km2) {
+  # HydroLAKES lookup currently disabled - hydrolinks package not on CRAN
 
-  # Check if hydrolinks package is available
-  if (!requireNamespace("hydrolinks", quietly = TRUE)) {
-    message("Note: Install 'hydrolinks' package for HydroLAKES depth lookup")
-    message("      install.packages('hydrolinks')")
-    return(NULL)
-  }
-
-  # Get lake centroid for lookup
-  centroid <- sf::st_centroid(sf::st_union(lake_polygon))
-  centroid_wgs84 <- sf::st_transform(centroid, 4326)
-  coords <- sf::st_coordinates(centroid_wgs84)
-
-  tryCatch({
-    # Use hydrolinks to find matching lake
-    # This will download HydroLAKES data on first use
-    lake_match <- hydrolinks::link_to_waterbodies(
-      lats = coords[2],
-      lons = coords[1],
-      ids = "query_lake",
-      dataset = "hydrolakes"
-    )
-
-    if (nrow(lake_match) > 0 && !is.na(lake_match$Depth_avg[1])) {
-      depth_mean <- lake_match$Depth_avg[1]
-      depth_max <- if ("Vol_total" %in% names(lake_match) &&
-                       "Lake_area" %in% names(lake_match)) {
-        # Estimate max depth from volume and area if available
-        # Using cone approximation: V = (1/3) * A * Dmax
-        # So Dmax ~ 3 * V / A
-        vol_km3 <- lake_match$Vol_total[1]
-        area_km2 <- lake_match$Lake_area[1]
-        if (!is.na(vol_km3) && !is.na(area_km2) && area_km2 > 0) {
-          3 * (vol_km3 * 1e9) / (area_km2 * 1e6)  # Convert to meters
-        } else {
-          depth_mean * 2.5  # Rough estimate: max ~ 2.5 * mean
-        }
-      } else {
-        depth_mean * 2.5
-      }
-
-      message("  Lake depth from HydroLAKES: mean = ", round(depth_mean, 1),
-              "m, max ~ ", round(depth_max, 1), "m")
-
-      return(list(
-        depth_mean = depth_mean,
-        depth_max = depth_max,
-        source = "hydrolakes",
-        confidence = "medium"
-      ))
-    }
-  }, error = function(e) {
-    # Silently fail and fall back to empirical
-    NULL
-  })
-
+  # Falls back to empirical depth estimation based on lake area
+  # TODO: Re-enable when hydrolinks becomes available on CRAN or implement
+  #       direct HydroLAKES API access
   return(NULL)
 }
 

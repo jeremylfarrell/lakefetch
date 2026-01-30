@@ -14,7 +14,7 @@
   validation_buffer_m = 10,
   default_wind_speed_ms = 10,
   default_depth_m = 10,
-  gps_tolerance_m = 50,
+  gps_tolerance_m = 100,
 
   use_parallel = TRUE,
 

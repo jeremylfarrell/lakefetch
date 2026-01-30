@@ -73,61 +73,91 @@ download_lake_osm <- function(sites_df) {
   bbox_vec <- c(bbox["xmin"], bbox["ymin"], bbox["xmax"], bbox["ymax"])
   names(bbox_vec) <- c("left", "bottom", "right", "top")
 
-  message("Downloading lake boundary from OpenStreetMap...")
+  message("Downloading lake boundaries from OpenStreetMap...")
   message("  Bounding box: [", paste(round(bbox_vec, 4), collapse = ", "), "]")
 
-  # Try MULTIPLE OSM queries with different tags
+  # Helper to extract polygons from OSM response
+  extract_osm_polys <- function(osm_data) {
+    result <- list()
+    if (!is.null(osm_data$osm_polygons) && nrow(osm_data$osm_polygons) > 0) {
+      std_poly <- standardize_osm_sf(osm_data$osm_polygons)
+      if (!is.null(std_poly) && nrow(std_poly) > 0) {
+        result[[length(result) + 1]] <- std_poly
+        message("    Found ", nrow(std_poly), " polygons")
+      }
+    }
+    if (!is.null(osm_data$osm_multipolygons) && nrow(osm_data$osm_multipolygons) > 0) {
+      std_mpoly <- standardize_osm_sf(osm_data$osm_multipolygons)
+      if (!is.null(std_mpoly) && nrow(std_mpoly) > 0) {
+        result[[length(result) + 1]] <- std_mpoly
+        message("    Found ", nrow(std_mpoly), " multipolygons")
+      }
+    }
+    return(result)
+  }
+
+  # Overpass servers to try (main server often overloaded)
+  overpass_servers <- c(
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+  )
+
+  # Helper to query OSM with retries across multiple servers
+  query_osm_robust <- function(bbox, key, value, max_attempts = 3) {
+    for (attempt in seq_len(max_attempts)) {
+      # Rotate through servers
+      server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
+
+      tryCatch({
+        # Set the Overpass server
+        osmdata::set_overpass_url(server)
+
+        osm_query <- osmdata::opq(bbox = bbox, timeout = 90)
+        osm_query <- osmdata::add_osm_feature(osm_query, key = key, value = value)
+        result <- osmdata::osmdata_sf(osm_query)
+
+        # Reset to default server
+        osmdata::set_overpass_url(overpass_servers[1])
+        return(result)
+
+      }, error = function(e) {
+        msg <- conditionMessage(e)
+        if (attempt < max_attempts) {
+          # Check if it's a server error worth retrying
+          if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
+            wait_time <- attempt * 3
+            message("    Server error, trying another server in ", wait_time, "s...")
+            Sys.sleep(wait_time)
+          } else {
+            message("    Error: ", msg)
+          }
+        } else {
+          message("    Failed after ", max_attempts, " attempts: ", msg)
+        }
+        NULL
+      })
+    }
+    # Reset to default server on failure
+    tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
+    return(NULL)
+  }
+
   water_list <- list()
 
-  # 1. Try natural=water
-  message("  Trying natural=water...")
-  tryCatch({
-    osm_query <- osmdata::opq(bbox = bbox_vec, timeout = 120)
-    osm_query <- osmdata::add_osm_feature(osm_query, key = "natural", value = "water")
-    osm_water <- osmdata::osmdata_sf(osm_query)
+  # Query for natural=water (catches most lakes, ponds, reservoirs)
+  message("  Querying natural=water...")
+  osm_result <- query_osm_robust(bbox_vec, "natural", "water")
+  if (!is.null(osm_result)) {
+    water_list <- c(water_list, extract_osm_polys(osm_result))
+  }
 
-    if (!is.null(osm_water$osm_polygons) && nrow(osm_water$osm_polygons) > 0) {
-      std_poly <- standardize_osm_sf(osm_water$osm_polygons)
-      if (!is.null(std_poly) && nrow(std_poly) > 0) {
-        water_list[[length(water_list) + 1]] <- std_poly
-        message("    Found ", nrow(std_poly), " polygons")
-      }
-    }
-    if (!is.null(osm_water$osm_multipolygons) && nrow(osm_water$osm_multipolygons) > 0) {
-      std_mpoly <- standardize_osm_sf(osm_water$osm_multipolygons)
-      if (!is.null(std_mpoly) && nrow(std_mpoly) > 0) {
-        water_list[[length(water_list) + 1]] <- std_mpoly
-        message("    Found ", nrow(std_mpoly), " multipolygons")
-      }
-    }
-  }, error = function(e) {
-    message("    Error with natural=water: ", conditionMessage(e))
-  })
-
-  # 2. Try water=lake specifically
-  message("  Trying water=lake...")
-  tryCatch({
-    osm_query <- osmdata::opq(bbox = bbox_vec, timeout = 120)
-    osm_query <- osmdata::add_osm_feature(osm_query, key = "water", value = "lake")
-    osm_lake <- osmdata::osmdata_sf(osm_query)
-
-    if (!is.null(osm_lake$osm_polygons) && nrow(osm_lake$osm_polygons) > 0) {
-      std_poly <- standardize_osm_sf(osm_lake$osm_polygons)
-      if (!is.null(std_poly) && nrow(std_poly) > 0) {
-        water_list[[length(water_list) + 1]] <- std_poly
-        message("    Found ", nrow(std_poly), " polygons")
-      }
-    }
-    if (!is.null(osm_lake$osm_multipolygons) && nrow(osm_lake$osm_multipolygons) > 0) {
-      std_mpoly <- standardize_osm_sf(osm_lake$osm_multipolygons)
-      if (!is.null(std_mpoly) && nrow(std_mpoly) > 0) {
-        water_list[[length(water_list) + 1]] <- std_mpoly
-        message("    Found ", nrow(std_mpoly), " multipolygons")
-      }
-    }
-  }, error = function(e) {
-    message("    Error with water=lake: ", conditionMessage(e))
-  })
+  # Also query water=lake (some lakes only have this tag)
+  message("  Querying water=lake...")
+  osm_result <- query_osm_robust(bbox_vec, "water", "lake")
+  if (!is.null(osm_result)) {
+    water_list <- c(water_list, extract_osm_polys(osm_result))
+  }
 
   # Auto-detect UTM zone from sites
   site_coords <- if (inherits(sites_df, "sf")) {
@@ -418,6 +448,72 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
     message("    ", buffer_matches, " additional sites matched within tolerance")
   }
 
+  # Third pass: name-based matching for remaining unmatched sites
+  # If sites have a lake.name or similar column, try to match by name
+  unmatched_idx <- which(is.na(sites_sf$lake_osm_id))
+  if (length(unmatched_idx) > 0) {
+    # Check if sites have a lake name column we can use
+    site_lake_col <- NULL
+    for (col in c("lake.name", "lake_name", "lakename", "Lake", "lake", "waterbody")) {
+      if (col %in% names(sites_sf)) {
+        site_lake_col <- col
+        break
+      }
+    }
+
+    if (!is.null(site_lake_col)) {
+      message("  Trying name-based matching using '", site_lake_col, "' column...")
+
+      # Get unique lake names from unmatched sites
+      unmatched_lake_names <- unique(sites_sf[[site_lake_col]][unmatched_idx])
+      unmatched_lake_names <- unmatched_lake_names[!is.na(unmatched_lake_names)]
+
+      # Get OSM lake names (lowercase for comparison)
+      osm_names <- tolower(trimws(water_polygons$name))
+      osm_names[is.na(osm_names)] <- ""
+
+      for (site_lake_name in unmatched_lake_names) {
+        site_lake_lower <- tolower(trimws(site_lake_name))
+
+        # Try exact match first
+        exact_match <- which(osm_names == site_lake_lower)
+
+        # If no exact match, try partial/fuzzy matching
+        if (length(exact_match) == 0) {
+          # Check if OSM name contains site lake name or vice versa
+          partial_match <- which(
+            grepl(site_lake_lower, osm_names, fixed = TRUE) |
+            sapply(osm_names, function(x) grepl(x, site_lake_lower, fixed = TRUE) && nchar(x) > 3)
+          )
+          if (length(partial_match) > 0) {
+            exact_match <- partial_match[1]
+          }
+        }
+
+        if (length(exact_match) > 0) {
+          # Found a matching lake - assign all unmatched sites with this lake name
+          lake_match <- water_polygons[exact_match[1], ]
+          site_indices <- unmatched_idx[sites_sf[[site_lake_col]][unmatched_idx] == site_lake_name]
+
+          for (idx in site_indices) {
+            sites_sf$lake_osm_id[idx] <- lake_match$osm_id
+            sites_sf$lake_name[idx] <- lake_match$name
+            if ("area_km2" %in% names(lake_match)) {
+              sites_sf$lake_area_km2[idx] <- lake_match$area_km2
+            }
+          }
+          message("    Matched ", length(site_indices), " sites to '", lake_match$name,
+                  "' via name matching from '", site_lake_name, "'")
+        } else {
+          # Report unmatched lake name
+          n_unmatched_this_lake <- sum(sites_sf[[site_lake_col]][unmatched_idx] == site_lake_name)
+          message("    WARNING: No OSM lake found matching '", site_lake_name,
+                  "' (", n_unmatched_this_lake, " sites)")
+        }
+      }
+    }
+  }
+
   # Summary
   matched <- sum(!is.na(sites_sf$lake_osm_id))
   unmatched <- sum(is.na(sites_sf$lake_osm_id))
@@ -427,6 +523,35 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
 
   if (unmatched > 0) {
     message("    Unmatched: ", unmatched)
+
+    # Provide diagnostic information for unmatched sites
+    unmatched_sites <- sites_sf[is.na(sites_sf$lake_osm_id), ]
+    unmatched_coords <- sf::st_coordinates(unmatched_sites)
+
+    # Check if unmatched sites have a lake name column
+    lake_col <- NULL
+    for (col in c("lake.name", "lake_name", "lakename", "Lake", "lake", "waterbody")) {
+      if (col %in% names(unmatched_sites)) {
+        lake_col <- col
+        break
+      }
+    }
+
+    if (!is.null(lake_col)) {
+      unmatched_lakes <- unique(unmatched_sites[[lake_col]])
+      message("    Unmatched sites claim to be in: ", paste(unmatched_lakes, collapse = ", "))
+    }
+
+    # Show coordinate range of unmatched sites
+    message("    Unmatched coordinate range:")
+    message("      Lat: ", round(min(unmatched_coords[, 2]), 4), " to ",
+            round(max(unmatched_coords[, 2]), 4))
+    message("      Lon: ", round(min(unmatched_coords[, 1]), 4), " to ",
+            round(max(unmatched_coords[, 1]), 4))
+
+    # Suggest increasing tolerance or checking OSM
+    message("    TIP: Try lakefetch_options(gps_tolerance_m = 100) for larger buffer")
+    message("    TIP: Check if the lake exists in OpenStreetMap at openstreetmap.org")
   }
 
   # Clean up lake names - look up from water_polygons if name is NA
