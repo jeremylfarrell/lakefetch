@@ -8,7 +8,7 @@ Calculate fetch (open water distance) and wave exposure metrics for lake samplin
 
 ## Overview
 
-**lakefetch** calculates directional fetch using a ray-casting algorithm, automatically downloads lake boundaries from OpenStreetMap, and provides exposure classification for ecological and limnological studies. Unlike marine-focused packages (fetchR, waver), lakefetch is designed specifically for freshwater lakes with features like multi-lake batch processing and NHD integration.
+**lakefetch** calculates directional fetch using a ray-casting algorithm, can download lake boundaries from OpenStreetMap, and provides exposure classification for ecological and limnological studies. Unlike marine-focused packages (fetchR, waver), lakefetch is designed specifically for freshwater lakes with features like multi-lake batch processing and NHD integration.
 
 ## Installation
 
@@ -44,7 +44,7 @@ results$results  # sf object with fetch data and exposure categories
 - **Multi-lake support**: Process sites across multiple lakes in a single analysis
 - **Exposure classification**: Automatic categorization into Sheltered/Moderate/Exposed
 - **NHD integration**: Optional integration with National Hydrography Dataset for US lakes (outlets, inlets, watershed area)
-- **Weather integration**: Historical wind data from Open-Meteo API for wave energy calculations
+- **Weather integration**: Weather integration is optional and disabled by default during package checks
 - **Visualization**: Static plots (maps, bar charts, rose diagrams) and interactive Shiny app
 
 ## Example Workflow
