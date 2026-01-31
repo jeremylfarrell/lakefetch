@@ -10,6 +10,9 @@
 #'
 #' @param sites Data frame or sf object with site locations
 #' @param lake Lake boundary data from \code{\link{get_lake_boundary}}
+#' @param depth_m Water depth in meters for orbital velocity calculation.
+#'   Can be a single value (applied to all sites), a vector (one per site),
+#'   or NULL to use depth from sites data or default from options.
 #' @param add_context Logical; add NHD context if available (default TRUE)
 #'
 #' @return A list with elements:
@@ -25,6 +28,7 @@
 #'   \item Casts rays in all directions at specified angle resolution
 #'   \item Measures distance to shore in each direction
 #'   \item Calculates summary metrics (mean, max, effective fetch)
+#'   \item Calculates orbital velocity using depth
 #'   \item Derives exposure category (Sheltered/Moderate/Exposed)
 #' }
 #'
@@ -34,18 +38,44 @@
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #'
+#' # With explicit depth
+#' results <- fetch_calculate(sites, lake, depth_m = 5)
+#'
 #' # Access results
 #' results$results  # sf with all fetch data
 #' results$lakes    # lake polygons
 #' }
 #'
 #' @export
-fetch_calculate <- function(sites, lake, add_context = TRUE) {
+fetch_calculate <- function(sites, lake, depth_m = NULL, add_context = TRUE) {
 
   # Extract components from lake data
   all_lakes <- lake$all_lakes
   sites_sf <- lake$sites
   utm_epsg <- lake$utm_epsg
+
+  # Resolve depth values
+  n_sites <- nrow(sites_sf)
+  if (!is.null(depth_m)) {
+    # User provided depth
+    if (length(depth_m) == 1) {
+      depth_vec <- rep(depth_m, n_sites)
+    } else if (length(depth_m) == n_sites) {
+      depth_vec <- depth_m
+    } else {
+      stop("depth_m must be a single value or a vector with one value per site")
+    }
+    message("Using provided depth: ", paste(unique(depth_vec), collapse = ", "), " m")
+  } else if ("depth_m" %in% names(sites_sf)) {
+    # Depth from sites data
+    depth_vec <- sites_sf$depth_m
+    depth_vec[is.na(depth_vec)] <- get_opt("default_depth_m")
+    message("Using depth from sites data (default for missing: ", get_opt("default_depth_m"), " m)")
+  } else {
+    # Use default
+    depth_vec <- rep(get_opt("default_depth_m"), n_sites)
+    message("Using default depth: ", get_opt("default_depth_m"), " m")
+  }
 
   # Assign sites to lakes
   sites_with_lakes <- assign_sites_to_lakes(
@@ -53,6 +83,10 @@ fetch_calculate <- function(sites, lake, add_context = TRUE) {
     all_lakes,
     tolerance_m = get_opt("gps_tolerance_m")
   )
+
+  # Add depth to sites
+
+  sites_with_lakes$depth_m <- depth_vec
 
   # Calculate fetch (handles multiple lakes)
   fetch_data <- calculate_fetch_multi_lake(
@@ -280,7 +314,9 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
     mean(sort(x, decreasing = TRUE)[1:3], na.rm = TRUE)
   })
 
-  results$orbital_effective <- calc_orbital(results$fetch_effective)
+  # Calculate orbital velocity using depth (depth_m column should exist from sites_with_lakes)
+  site_depth <- if ("depth_m" %in% names(results)) results$depth_m else get_opt("default_depth_m")
+  results$orbital_effective <- calc_orbital(results$fetch_effective, depth_m = site_depth)
 
   results$exposure_category <- ifelse(results$fetch_effective < 2500, "Sheltered",
                                       ifelse(results$fetch_effective > 5000, "Exposed",
@@ -440,19 +476,45 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = NULL) {
   return(sf::st_point(c(new_x, new_y)))
 }
 
-#' Calculate Orbital Velocity Approximation
+#' Calculate Orbital Velocity
 #'
-#' Estimate wave-induced orbital velocity based on fetch and wind speed.
+#' Estimate wave-induced near-bottom orbital velocity based on fetch, wind speed,
+#' and water depth using SMB (Sverdrup-Munk-Bretschneider) wave equations.
 #'
 #' @param fetch_m Fetch distance in meters
+#' @param depth_m Water depth in meters
 #' @param wind_speed Wind speed in m/s
 #'
 #' @return Orbital velocity in m/s
 #' @noRd
-calc_orbital <- function(fetch_m, wind_speed = NULL) {
+calc_orbital <- function(fetch_m, depth_m = NULL, wind_speed = NULL) {
   if (is.null(wind_speed)) {
     wind_speed <- get_opt("default_wind_speed_ms")
   }
+  if (is.null(depth_m)) {
+    depth_m <- get_opt("default_depth_m")
+  }
+
+
+  # SMB wave hindcast equations
+  # Significant wave height (m): H_s = 0.0016 * sqrt(F) * U
   H_sig <- 0.0016 * sqrt(fetch_m) * wind_speed
-  return(H_sig)
+
+  # Wave period (s): T_p = 0.286 * F^0.33 * U^0.33
+  T_p <- 0.286 * (fetch_m^0.33) * (wind_speed^0.33)
+
+  # Avoid division by zero
+
+  T_p <- pmax(T_p, 0.1)
+
+  # Deep water wavelength: L = 1.56 * T^2
+  wavelength <- 1.56 * T_p^2
+
+  # Wave number: k = 2*pi / L
+  k <- 2 * pi / wavelength
+
+  # Near-bottom orbital velocity: U_b = (pi * H / T) * exp(-k * d)
+  orbital_velocity <- (pi * H_sig / T_p) * exp(-k * depth_m)
+
+  return(orbital_velocity)
 }

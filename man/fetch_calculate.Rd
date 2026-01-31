@@ -4,12 +4,16 @@
 \alias{fetch_calculate}
 \title{Calculate Fetch for Lake Sampling Sites}
 \usage{
-fetch_calculate(sites, lake, add_context = TRUE)
+fetch_calculate(sites, lake, depth_m = NULL, add_context = TRUE)
 }
 \arguments{
 \item{sites}{Data frame or sf object with site locations}
 
 \item{lake}{Lake boundary data from \code{\link{get_lake_boundary}}}
+
+\item{depth_m}{Water depth in meters for orbital velocity calculation.
+Can be a single value (applied to all sites), a vector (one per site),
+or NULL to use depth from sites data or default from options.}
 
 \item{add_context}{Logical; add NHD context if available (default TRUE)}
 }
@@ -32,6 +36,7 @@ For each site, the function:
 \item Casts rays in all directions at specified angle resolution
 \item Measures distance to shore in each direction
 \item Calculates summary metrics (mean, max, effective fetch)
+\item Calculates orbital velocity using depth
 \item Derives exposure category (Sheltered/Moderate/Exposed)
 }
 }
@@ -40,6 +45,9 @@ For each site, the function:
 sites <- load_sites("my_sites.csv")
 lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
+
+# With explicit depth
+results <- fetch_calculate(sites, lake, depth_m = 5)
 
 # Access results
 results$results  # sf with all fetch data

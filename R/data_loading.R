@@ -179,6 +179,37 @@ load_sites <- function(x) {
     }
   }
 
+  # Look for depth column
+
+  depth_patterns <- c("^depth$", "^dpth$", "^depth_m$", "^depth_meters$",
+                      "^depth\\s*\\(m\\)$", "^depth\\s*\\(meters\\)$",
+                      "^water_depth$", "^waterdepth$", "^site_depth$")
+  depth_col_idx <- NA
+  for (pattern in depth_patterns) {
+    idx <- grep(pattern, col_names_lower)[1]
+    if (!is.na(idx)) {
+      depth_col_idx <- idx
+      break
+    }
+  }
+
+  # Parse depth if found
+  if (!is.na(depth_col_idx)) {
+    depth_col_name <- names(sites_raw)[depth_col_idx]
+    depth_raw <- sites_raw[[depth_col_idx]]
+
+    # Clean and convert to numeric
+    depth_clean <- gsub("[^0-9.-]", "", as.character(depth_raw))
+    depth_parsed <- suppressWarnings(as.numeric(depth_clean))
+
+    if (!all(is.na(depth_parsed))) {
+      sites_clean$depth_m <- depth_parsed[sites_clean$row_id]
+      message("  Detected depth column: ", depth_col_name)
+    } else {
+      message("  Warning: Could not parse depth column '", depth_col_name, "'")
+    }
+  }
+
   # Create unique Site identifiers
   # If we have datetime, use site_name + date; otherwise use site_name + row number
   if ("datetime" %in% names(sites_clean) && !all(is.na(sites_clean$datetime))) {

@@ -275,7 +275,8 @@ fetch_app <- function(fetch_data, title = NULL) {
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
         fetch_effective <- mean(sort(fetch_dists, decreasing = TRUE)[1:3], na.rm = TRUE)
-        orbital <- calc_orbital(fetch_effective)
+        # Use default depth for click analysis in fetch_app
+        orbital <- calc_orbital(fetch_effective, depth_m = get_opt("default_depth_m"))
         exposure <- if (fetch_effective < 2500) "Sheltered" else if (fetch_effective > 5000) "Exposed" else "Moderate"
 
         # Create rays for visualization
@@ -461,11 +462,12 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::helpText("Optional: include a 'datetime' column for weather analysis"),
           shiny::hr(),
           shiny::h5("Options"),
+          shiny::numericInput("water_depth", "Water depth (m)", value = 5, min = 0.5, max = 100),
+          shiny::helpText("Used for orbital velocity calculation"),
           shiny::checkboxInput("add_nhd", "Add NHD context (outlets/inlets)", value = FALSE),
           shiny::checkboxInput("add_weather", "Add historical weather data", value = FALSE),
           shiny::conditionalPanel(
             condition = "input.add_weather",
-            shiny::numericInput("water_depth", "Water depth (m)", value = 5, min = 1, max = 100),
             shiny::helpText("Requires 'datetime' column in CSV")
           ),
           shiny::hr(),
@@ -596,6 +598,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           # Step 2: Calculate fetch
           shiny::incProgress(0.25, detail = "Calculating fetch...")
           rv$fetch_data <- fetch_calculate(rv$sites, rv$lake_data,
+                                            depth_m = input$water_depth,
                                             add_context = input$add_nhd)
 
           # Step 3: Add weather data if requested and datetime available
@@ -808,7 +811,8 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
         fetch_effective <- mean(sort(fetch_dists, decreasing = TRUE)[1:3], na.rm = TRUE)
-        orbital <- calc_orbital(fetch_effective)
+        # Use user-specified depth from input
+        orbital <- calc_orbital(fetch_effective, depth_m = input$water_depth)
         exposure <- if (fetch_effective < 2500) "Sheltered" else if (fetch_effective > 5000) "Exposed" else "Moderate"
 
         pt_coords <- sf::st_coordinates(nudged_sf)
