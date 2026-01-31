@@ -61,9 +61,11 @@ download_lake_osm <- function(sites_df) {
                               crs = 4326)
   }
 
-  # Create bounding box with buffer for better OSM coverage
+  # Create bounding box with adaptive buffer for OSM coverage
+  # Buffer scales with site spread: 10% of spread, clamped to 0.01-0.05 degrees (~1-5 km)
   bbox <- sf::st_bbox(sites_sf)
-  bbox_buffer <- 0.15
+  site_spread <- max(bbox["xmax"] - bbox["xmin"], bbox["ymax"] - bbox["ymin"])
+  bbox_buffer <- min(0.05, max(0.01, site_spread * 0.1))
   bbox[1] <- bbox[1] - bbox_buffer
   bbox[2] <- bbox[2] - bbox_buffer
   bbox[3] <- bbox[3] + bbox_buffer
