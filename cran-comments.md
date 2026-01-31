@@ -2,7 +2,7 @@
 
 0 errors | 0 warnings | 2 notes
 
-**NOTE 1:** New submission, with "possibly misspelled" words:
+**NOTE 1:** New submission, with "possibly misspelled" words. These terms appear in documentation and DESCRIPTION and are correct proper nouns:
 - HydroLAKES, Hydrography, NHD, OpenStreetMap, hydrological
 - These are correct: HydroLAKES is a global lake database, NHD is the National Hydrography Dataset, OpenStreetMap is the mapping service
 
@@ -20,11 +20,11 @@ There are currently no downstream dependencies for this package.
 
 ## Notes for CRAN reviewers
 
-This is the initial CRAN submission for lakefetch.
+This is the first submission of lakefetch to CRAN.
 
 ### Package purpose
 
-lakefetch calculates fetch (open water distance) and wave exposure metrics for freshwater lake sampling sites. It fills a gap in the R ecosystem - existing fetch packages (fetchR, waver) focus on marine/coastal applications, while lakefetch is designed specifically for inland lakes with features like:
+lakefetch calculates fetch (open water distance) and wave exposure metrics for freshwater lake sampling sites. It addresses a gap in the R ecosystem — existing fetch packages (fetchR, waver) focus on marine/coastal applications, while lakefetch is designed specifically for inland lakes with features like:
 
 - Automatic lake boundary download from OpenStreetMap
 - Multi-lake batch processing
@@ -37,7 +37,7 @@ The package makes HTTP requests to:
 - OpenStreetMap Overpass API (for lake boundary download)
 - Open-Meteo API (for optional historical weather data)
 
-All API calls are wrapped in tryCatch() with informative error messages, and users can alternatively provide local boundary files.
+All API calls are wrapped in tryCatch() with informative error messages, and users can alternatively provide local boundary files. 
 
 ### Examples
 
