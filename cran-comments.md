@@ -5,8 +5,9 @@
 ## Test environments
 
 * Local: Windows 11 x64 (build 26200), R 4.4.1
-* win-builder: R-devel (R Under development), Windows Server 2022
-* win-builder: R-release (R 4.5.2), Windows Server 2022
+* R-hub: Ubuntu Linux (R-devel)
+* R-hub: macOS ARM64 (R-devel)
+* R-hub: Windows (R-devel)
 
 ## Downstream dependencies
 
