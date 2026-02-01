@@ -1,6 +1,10 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
+0 errors | 0 warnings | 1 note
+
+The NOTE is about the `.github` directory containing GitHub Actions workflows
+for R-hub automated checking. This is intentional and follows current best
+practices for R package CI/CD.
 
 ## Test environments
 
