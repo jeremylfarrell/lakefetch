@@ -16,9 +16,7 @@
 .idea/
 
 # Output files
-*.html
 *.pdf
-inst/doc/
 
 # Data files (user-specific)
 *.csv
