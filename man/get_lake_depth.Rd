@@ -19,26 +19,24 @@ bathymetry grid support)}
 
 \item{user_depth}{User-provided depth in meters (highest priority)}
 
-\item{method}{Method for depth estimation: "auto" (try all), "hydrolakes",
-or "empirical"}
+\item{method}{Method for depth estimation: "auto" or "empirical"}
 }
 \value{
 A list with elements:
 \item{depth_mean}{Estimated mean depth in meters}
 \item{depth_max}{Estimated maximum depth in meters (if available)}
-\item{source}{Source of the estimate ("user", "hydrolakes", "empirical")}
+\item{source}{Source of the estimate ("user" or "empirical")}
 \item{confidence}{Confidence level ("high", "medium", "low")}
 }
 \description{
-Retrieves or estimates lake depth for wave calculations. Uses multiple
-methods in order of preference: user-provided depth, HydroLAKES database,
-or empirical estimation from lake area.
+Retrieves or estimates lake depth for wave calculations. Uses user-provided
+depth if available, otherwise estimates from lake surface area using
+empirical relationships.
 }
 \details{
 Depth estimation methods:
 \enumerate{
 \item User-provided: Direct input, highest confidence
-\item HydroLAKES: Global database with depth estimates for lakes >10 ha
 \item Empirical: Estimated from lake surface area using published relationships
 }
 
@@ -50,7 +48,7 @@ mean_depth ~ 10.3 * area_km2^0.25
 # With user-provided depth
 depth <- get_lake_depth(lake_poly, user_depth = 8.5)
 
-# Auto-detect from HydroLAKES or estimate
+# Estimate from lake area
 depth <- get_lake_depth(lake_poly)
 }
 

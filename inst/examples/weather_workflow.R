@@ -37,7 +37,7 @@ results <- fetch_calculate(sites, lake, add_context = FALSE)
 # 3. Add Lake Depth Estimates
 # ------------------------------------------------------------------------------
 
-# Tries HydroLAKES first, then estimates from lake area
+# Estimates depth from lake surface area using empirical relationships
 results_with_depth <- add_lake_depth(results$results, results$lakes)
 
 # ------------------------------------------------------------------------------

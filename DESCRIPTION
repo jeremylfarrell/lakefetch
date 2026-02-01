@@ -7,12 +7,12 @@ Authors@R:
            email = "farrej2@rpi.edu",
            role = c("aut", "cre"))
 Description: Calculates fetch (open water distance) and wave exposure metrics
-    for lake sampling points. Can download lake boundaries from OpenStreetMap,
-    calculate directional fetch using a ray-casting approach, and optionally
-    integrate National Hydrography Dataset (NHD) data <https://www.usgs.gov/national-hydrography> for hydrological context,
-    including outlet and inlet locations, watershed area, and connectivity
-    classification. Can optionally estimate lake depth using the HydroLAKES <https://www.hydrosheds.org/products/hydrolakes>
-    database or empirical relationships, and integrate historical weather data
+    for lake sampling points. Downloads lake boundaries from OpenStreetMap,
+    calculates directional fetch using a ray-casting approach, and optionally
+    integrates National Hydrography Dataset (NHD) data
+    <https://www.usgs.gov/national-hydrography> for hydrological context
+    including outlet and inlet locations. Can estimate lake depth from surface
+    area using empirical relationships, and integrate historical weather data
     for cumulative wave energy calculations. Includes an optional interactive
     Shiny application for visualization.
 License: MIT + file LICENSE

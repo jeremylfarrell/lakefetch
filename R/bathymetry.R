@@ -1,34 +1,32 @@
 # ==============================================================================
 # Lake Depth and Bathymetry Functions
 # ==============================================================================
-# Functions to estimate lake depth using HydroLAKES database and empirical
-# relationships. Used for wave orbital velocity calculations.
+# Functions to estimate lake depth using empirical relationships.
+# Used for wave orbital velocity calculations.
 # ==============================================================================
 
 #' Get Lake Depth Estimates
 #'
-#' Retrieves or estimates lake depth for wave calculations. Uses multiple
-#' methods in order of preference: user-provided depth, HydroLAKES database,
-#' or empirical estimation from lake area.
+#' Retrieves or estimates lake depth for wave calculations. Uses user-provided
+#' depth if available, otherwise estimates from lake surface area using
+#' empirical relationships.
 #'
 #' @param lake_polygon sf polygon of the lake
 #' @param site_coords Coordinates of the sample site (optional, for future
 #'   bathymetry grid support)
 #' @param user_depth User-provided depth in meters (highest priority)
-#' @param method Method for depth estimation: "auto" (try all), "hydrolakes",
-#'   or "empirical"
+#' @param method Method for depth estimation: "auto" or "empirical"
 #'
 #' @return A list with elements:
 #'   \item{depth_mean}{Estimated mean depth in meters}
 #'   \item{depth_max}{Estimated maximum depth in meters (if available)}
-#'   \item{source}{Source of the estimate ("user", "hydrolakes", "empirical")}
+#'   \item{source}{Source of the estimate ("user" or "empirical")}
 #'   \item{confidence}{Confidence level ("high", "medium", "low")}
 #'
 #' @details
 #' Depth estimation methods:
 #' \enumerate{
 #'   \item User-provided: Direct input, highest confidence
-#'   \item HydroLAKES: Global database with depth estimates for lakes >10 ha
 #'   \item Empirical: Estimated from lake surface area using published relationships
 #' }
 #'
@@ -40,7 +38,7 @@
 #' # With user-provided depth
 #' depth <- get_lake_depth(lake_poly, user_depth = 8.5)
 #'
-#' # Auto-detect from HydroLAKES or estimate
+#' # Estimate from lake area
 #' depth <- get_lake_depth(lake_poly)
 #' }
 #'
@@ -72,47 +70,10 @@ if (!is.null(user_depth) && !is.na(user_depth) && user_depth > 0) {
   lake_area_m2 <- as.numeric(sf::st_area(sf::st_union(lake_polygon)))
   lake_area_km2 <- lake_area_m2 / 1e6
 
-  # Try HydroLAKES if method allows
-  if (method %in% c("auto", "hydrolakes")) {
-    hydrolakes_result <- try_hydrolakes_lookup(lake_polygon, lake_area_km2)
-    if (!is.null(hydrolakes_result)) {
-      return(hydrolakes_result)
-    }
-  }
-
-  # Fall back to empirical estimation
-  if (method %in% c("auto", "empirical")) {
-    return(estimate_depth_empirical(lake_area_km2))
-  }
-
-  # No method succeeded
-  return(list(
-    depth_mean = NA_real_,
-    depth_max = NA_real_,
-    source = "none",
-    confidence = "none"
-  ))
+  # Use empirical estimation from lake area
+  return(estimate_depth_empirical(lake_area_km2))
 }
 
-
-#' Try to Look Up Lake in HydroLAKES Database
-#'
-#' Attempts to match a lake to the HydroLAKES database and retrieve depth.
-#'
-#' @param lake_polygon sf polygon of the lake
-#' @param lake_area_km2 Lake area in square kilometers
-#'
-#' @return List with depth info or NULL if not found
-#'
-#' @noRd
-try_hydrolakes_lookup <- function(lake_polygon, lake_area_km2) {
-  # HydroLAKES lookup currently disabled - hydrolinks package not on CRAN
-
-  # Falls back to empirical depth estimation based on lake area
-  # TODO: Re-enable when hydrolinks becomes available on CRAN or implement
-  #       direct HydroLAKES API access
-  return(NULL)
-}
 
 
 #' Estimate Lake Depth from Surface Area
