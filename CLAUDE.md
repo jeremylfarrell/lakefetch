@@ -8,18 +8,25 @@ Last updated: 2026-02-01
 
 **GitHub:** https://github.com/jeremylfarrell/lakefetch
 
-## Current Status: READY FOR CRAN SUBMISSION
+## Current Status: READY FOR CRAN SUBMISSION ✅
 
 All checks pass. Awaiting colleague feedback before submitting.
 
 ### Test Results
 
-| Environment | Status |
+| Environment | Result |
 |-------------|--------|
-| Local Windows 11, R 4.4.1 | ✅ 0 errors, 0 warnings, 0 notes |
+| Local Windows 11, R 4.4.1 | ✅ 0 errors, 0 warnings, 1 note |
 | R-hub Ubuntu Linux (R-devel) | ✅ Pass |
 | R-hub macOS ARM64 (R-devel) | ✅ Pass |
 | R-hub Windows (R-devel) | ✅ Pass |
+| Win-builder R-devel | ✅ 0 errors, 0 warnings, 2 notes |
+| Win-builder R-release | ✅ Submitted |
+
+### Expected NOTEs (acceptable for CRAN)
+
+1. **New submission** with "misspelled" words (`Hydrography`, `NHD`, `OpenStreetMap`, `hydrological`) - these are correct technical terms
+2. **`.github` directory** - contains GitHub Actions for CI/CD, standard practice
 
 ## Installation (for colleagues testing)
 
@@ -55,7 +62,7 @@ print(results$results)
 fetch_app(results)
 ```
 
-## Standalone Shiny App
+## Standalone Shiny App (No Coding Required)
 
 Users can run the app without any R coding - just upload a CSV:
 
@@ -81,6 +88,7 @@ This launches a browser-based app where users can:
   - `"cosine"` - SPM/CERC cosine-weighted method
 - **Wave metrics** - orbital velocity using SMB equations with depth attenuation
 - **Exposure classification** - Sheltered/Moderate/Exposed (configurable thresholds)
+- **Depth estimation** - empirical estimation from lake surface area (Cael et al. 2017)
 - **Optional NHD integration** - outlet/inlet detection for US lakes
 - **Optional weather integration** - historical wind data from Open-Meteo API
 - **Interactive visualization** - Shiny app with Leaflet maps
@@ -125,7 +133,7 @@ Site_C,43.41,-73.70,3.1
 When ready to submit:
 
 ```r
-# Final check
+# Final check (optional)
 devtools::check()
 
 # Submit to CRAN
@@ -142,11 +150,7 @@ You'll receive:
 - `NEWS.md` - Version changelog
 - `README.md` - Package documentation
 - `inst/CITATION` - Citation information
-
-## Known Notes
-
-- The `.github` folder (for R-hub GitHub Actions) generates a NOTE in R CMD check - this is expected and acceptable for CRAN
-- Most examples use `\dontrun{}` due to API calls - this is standard practice
+- `inst/doc/` - Pre-built vignettes
 
 ## Package Structure
 
@@ -167,10 +171,12 @@ lakefetch/
 ├── data/                  # Built-in example datasets
 ├── inst/
 │   ├── CITATION           # How to cite the package
+│   ├── doc/               # Pre-built vignettes
 │   └── examples/          # Example workflows
 ├── man/                   # Documentation (auto-generated)
 ├── tests/                 # Unit tests
-├── vignettes/             # Long-form documentation
+├── vignettes/             # Vignette source files
+├── .github/               # GitHub Actions for CI/CD
 ├── DESCRIPTION            # Package metadata
 ├── NAMESPACE              # Exports (auto-generated)
 ├── README.md              # GitHub readme
