@@ -458,7 +458,6 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = NULL) {
 
   # Extract the sfg point from sfc if needed (for consistent return type)
   original_point <- if (inherits(point_geom, "sfc")) point_geom[[1]] else point_geom
-  original_coords <- sf::st_coordinates(point_geom)
 
   # Handle empty or invalid geometries
   if (is.null(poly_boundary) || sf::st_is_empty(poly_boundary) ||
