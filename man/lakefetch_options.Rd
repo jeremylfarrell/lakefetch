@@ -25,7 +25,15 @@ Available options:
 \item{validation_buffer_m}{Shore detection validation buffer (default: 10)}
 \item{default_wind_speed_ms}{Default wind speed in m/s (default: 10)}
 \item{default_depth_m}{Default water depth in meters (default: 10)}
-\item{gps_tolerance_m}{Buffer for matching sites to lakes (default: 50)}
+\item{gps_tolerance_m}{Buffer for matching sites to lakes (default: 100)}
+\item{fetch_method}{Effective fetch calculation method: "top3" (mean of 3
+highest directional fetches, default), "max" (maximum directional fetch),
+or "cosine" (SPM/CERC cosine-weighted average across 9 radials at 6-degree
+intervals; see Shore Protection Manual, 1984)}
+\item{exposure_sheltered_m}{Fetch threshold below which sites are classified
+as "Sheltered" (default: 2500 m)}
+\item{exposure_exposed_m}{Fetch threshold above which sites are classified
+as "Exposed" (default: 5000 m). Sites between thresholds are "Moderate".}
 \item{use_parallel}{Use parallel processing for multi-lake (default: TRUE)}
 \item{use_nhd}{Use NHD integration if available (default: TRUE)}
 }

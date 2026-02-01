@@ -49,6 +49,6 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Jeremy Farrell \email{farrej2@rpi.edu}
+\strong{Maintainer}: Jeremy Lynch Farrell \email{farrej2@rpi.edu}
 
 }

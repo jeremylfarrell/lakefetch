@@ -271,13 +271,16 @@ fetch_app <- function(fetch_data, title = NULL) {
         # Get fetch distances
         fetch_dists <- get_highres_fetch(nudged_sf, lake_boundary, lake_poly, angles)
 
-        # Calculate metrics
+        # Calculate metrics using configured method
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
-        fetch_effective <- mean(sort(fetch_dists, decreasing = TRUE)[1:3], na.rm = TRUE)
+        fetch_matrix <- matrix(fetch_dists, nrow = 1)
+        fetch_effective <- calc_effective_fetch(fetch_matrix, angles, get_opt("fetch_method"))[1]
         # Use default depth for click analysis in fetch_app
         orbital <- calc_orbital(fetch_effective, depth_m = get_opt("default_depth_m"))
-        exposure <- if (fetch_effective < 2500) "Sheltered" else if (fetch_effective > 5000) "Exposed" else "Moderate"
+        sheltered_m <- get_opt("exposure_sheltered_m")
+        exposed_m <- get_opt("exposure_exposed_m")
+        exposure <- if (fetch_effective < sheltered_m) "Sheltered" else if (fetch_effective > exposed_m) "Exposed" else "Moderate"
 
         # Create rays for visualization
         pt_coords <- sf::st_coordinates(nudged_sf)
@@ -464,6 +467,12 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::h5("Options"),
           shiny::numericInput("water_depth", "Water depth (m)", value = 5, min = 0.5, max = 100),
           shiny::helpText("Used for orbital velocity calculation"),
+          shiny::selectInput("fetch_method", "Effective fetch method",
+                             choices = c("Mean of top 3" = "top3",
+                                        "Maximum" = "max",
+                                        "SPM cosine-weighted" = "cosine"),
+                             selected = "top3"),
+          shiny::helpText("SPM method uses 9 radials centered on max direction"),
           shiny::checkboxInput("add_nhd", "Add NHD context (outlets/inlets)", value = FALSE),
           shiny::checkboxInput("add_weather", "Add historical weather data", value = FALSE),
           shiny::conditionalPanel(
@@ -599,6 +608,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::incProgress(0.25, detail = "Calculating fetch...")
           rv$fetch_data <- fetch_calculate(rv$sites, rv$lake_data,
                                             depth_m = input$water_depth,
+                                            fetch_method = input$fetch_method,
                                             add_context = input$add_nhd)
 
           # Step 3: Add weather data if requested and datetime available
@@ -808,12 +818,16 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
         fetch_dists <- get_highres_fetch(nudged_sf, lake_boundary, lake_poly, angles)
 
+        # Calculate metrics using configured method
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
-        fetch_effective <- mean(sort(fetch_dists, decreasing = TRUE)[1:3], na.rm = TRUE)
+        fetch_matrix <- matrix(fetch_dists, nrow = 1)
+        fetch_effective <- calc_effective_fetch(fetch_matrix, angles, input$fetch_method)[1]
         # Use user-specified depth from input
         orbital <- calc_orbital(fetch_effective, depth_m = input$water_depth)
-        exposure <- if (fetch_effective < 2500) "Sheltered" else if (fetch_effective > 5000) "Exposed" else "Moderate"
+        sheltered_m <- get_opt("exposure_sheltered_m")
+        exposed_m <- get_opt("exposure_exposed_m")
+        exposure <- if (fetch_effective < sheltered_m) "Sheltered" else if (fetch_effective > exposed_m) "Exposed" else "Moderate"
 
         pt_coords <- sf::st_coordinates(nudged_sf)
         ray_lines <- lapply(seq_along(angles), function(i) {

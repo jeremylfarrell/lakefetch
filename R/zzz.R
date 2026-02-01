@@ -63,7 +63,10 @@ NULL
     lakefetch.validation_buffer_m = 10,
     lakefetch.default_wind_speed_ms = 10,
     lakefetch.default_depth_m = 10,
-    lakefetch.gps_tolerance_m = 50,
+    lakefetch.gps_tolerance_m = 100,
+    lakefetch.fetch_method = "top3",
+    lakefetch.exposure_sheltered_m = 2500,
+    lakefetch.exposure_exposed_m = 5000,
     lakefetch.use_parallel = TRUE,
     lakefetch.use_nhd = TRUE
   )

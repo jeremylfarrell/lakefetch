@@ -4,7 +4,13 @@
 \alias{fetch_calculate}
 \title{Calculate Fetch for Lake Sampling Sites}
 \usage{
-fetch_calculate(sites, lake, depth_m = NULL, add_context = TRUE)
+fetch_calculate(
+  sites,
+  lake,
+  depth_m = NULL,
+  fetch_method = NULL,
+  add_context = TRUE
+)
 }
 \arguments{
 \item{sites}{Data frame or sf object with site locations}
@@ -14,6 +20,16 @@ fetch_calculate(sites, lake, depth_m = NULL, add_context = TRUE)
 \item{depth_m}{Water depth in meters for orbital velocity calculation.
 Can be a single value (applied to all sites), a vector (one per site),
 or NULL to use depth from sites data or default from options.}
+
+\item{fetch_method}{Method for calculating effective fetch. Options:
+\describe{
+\item{"top3"}{Mean of the 3 highest directional fetch values (default)}
+\item{"max"}{Maximum directional fetch value}
+\item{"cosine"}{SPM/CERC cosine-weighted average. Uses 9 radials centered
+on the direction of maximum fetch at 6-degree intervals, weighted by
+cosine of angle from center. Based on Shore Protection Manual (1984).}
+}
+If NULL, uses the value from \code{\link{lakefetch_options}}.}
 
 \item{add_context}{Logical; add NHD context if available (default TRUE)}
 }
@@ -39,6 +55,8 @@ For each site, the function:
 \item Calculates orbital velocity using depth
 \item Derives exposure category (Sheltered/Moderate/Exposed)
 }
+
+Exposure thresholds can be configured via \code{\link{lakefetch_options}}.
 }
 \examples{
 \dontrun{
@@ -49,9 +67,16 @@ results <- fetch_calculate(sites, lake)
 # With explicit depth
 results <- fetch_calculate(sites, lake, depth_m = 5)
 
+# Using cosine-weighted effective fetch (SPM method)
+results <- fetch_calculate(sites, lake, fetch_method = "cosine")
+
 # Access results
 results$results  # sf with all fetch data
 results$lakes    # lake polygons
 }
 
+}
+\references{
+Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
+Engineering Research Center. 4th Edition.
 }

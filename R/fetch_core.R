@@ -13,6 +13,15 @@
 #' @param depth_m Water depth in meters for orbital velocity calculation.
 #'   Can be a single value (applied to all sites), a vector (one per site),
 #'   or NULL to use depth from sites data or default from options.
+#' @param fetch_method Method for calculating effective fetch. Options:
+#'   \describe{
+#'     \item{"top3"}{Mean of the 3 highest directional fetch values (default)}
+#'     \item{"max"}{Maximum directional fetch value}
+#'     \item{"cosine"}{SPM/CERC cosine-weighted average. Uses 9 radials centered
+#'       on the direction of maximum fetch at 6-degree intervals, weighted by
+#'       cosine of angle from center. Based on Shore Protection Manual (1984).}
+#'   }
+#'   If NULL, uses the value from \code{\link{lakefetch_options}}.
 #' @param add_context Logical; add NHD context if available (default TRUE)
 #'
 #' @return A list with elements:
@@ -32,6 +41,12 @@
 #'   \item Derives exposure category (Sheltered/Moderate/Exposed)
 #' }
 #'
+#' Exposure thresholds can be configured via \code{\link{lakefetch_options}}.
+#'
+#' @references
+#' Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
+#' Engineering Research Center. 4th Edition.
+#'
 #' @examples
 #' \dontrun{
 #' sites <- load_sites("my_sites.csv")
@@ -41,18 +56,29 @@
 #' # With explicit depth
 #' results <- fetch_calculate(sites, lake, depth_m = 5)
 #'
+#' # Using cosine-weighted effective fetch (SPM method)
+#' results <- fetch_calculate(sites, lake, fetch_method = "cosine")
+#'
 #' # Access results
 #' results$results  # sf with all fetch data
 #' results$lakes    # lake polygons
 #' }
 #'
 #' @export
-fetch_calculate <- function(sites, lake, depth_m = NULL, add_context = TRUE) {
+fetch_calculate <- function(sites, lake, depth_m = NULL, fetch_method = NULL,
+                            add_context = TRUE) {
 
   # Extract components from lake data
   all_lakes <- lake$all_lakes
   sites_sf <- lake$sites
   utm_epsg <- lake$utm_epsg
+
+  # Resolve fetch method
+  if (is.null(fetch_method)) {
+    fetch_method <- get_opt("fetch_method")
+  }
+  fetch_method <- match.arg(fetch_method, c("top3", "max", "cosine"))
+  message("Effective fetch method: ", fetch_method)
 
   # Resolve depth values
   n_sites <- nrow(sites_sf)
@@ -92,7 +118,8 @@ fetch_calculate <- function(sites, lake, depth_m = NULL, add_context = TRUE) {
   fetch_data <- calculate_fetch_multi_lake(
     sites_with_lakes,
     all_lakes,
-    utm_epsg
+    utm_epsg,
+    fetch_method = fetch_method
   )
 
   # Add lake context if requested and available
@@ -112,10 +139,12 @@ fetch_calculate <- function(sites, lake, depth_m = NULL, add_context = TRUE) {
 #' @param sites_with_lakes sf object with sites assigned to lakes
 #' @param all_lakes sf object with all lake polygons
 #' @param utm_epsg EPSG code for UTM projection
+#' @param fetch_method Method for effective fetch: "top3", "max", or "cosine"
 #'
 #' @return List with results, lakes, and angles
 #' @noRd
-calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg) {
+calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
+                                        fetch_method = "top3") {
 
   message("Calculating fetch for multiple lakes...")
   message("  Buffering sites ", get_opt("buffer_distance_m"), "m inward")
@@ -139,7 +168,8 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg) {
   message("Processing ", length(lakes_with_sites), " lake(s)...")
 
   # Define function to process one lake
-  process_one_lake <- function(lake_id, all_lakes_data, sites_data, utm_code) {
+  process_one_lake <- function(lake_id, all_lakes_data, sites_data, utm_code,
+                                eff_fetch_method) {
     lake_poly <- all_lakes_data[which(all_lakes_data$osm_id == lake_id), ]
     lake_sites <- sites_data[which(sites_data$lake_osm_id == lake_id), ]
     lake_nm <- lake_sites$lake_name[1]
@@ -149,7 +179,8 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg) {
       lake_polygon = lake_poly,
       utm_epsg = utm_code,
       lake_name = lake_nm,
-      lake_osm_id = lake_id
+      lake_osm_id = lake_id,
+      fetch_method = eff_fetch_method
     )
 
     return(result)
@@ -166,24 +197,24 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg) {
     # Export required functions and data
     parallel::clusterExport(cl, c(
       "calculate_fetch_single_lake", "get_highres_fetch", "nudge_inward",
-      "calc_orbital", "get_opt"
+      "calc_orbital", "calc_effective_fetch", "get_opt"
     ), envir = environment())
 
     parallel::clusterExport(cl, c("all_lakes", "sites_with_lakes", "utm_epsg",
-                                   "process_one_lake"),
+                                   "fetch_method", "process_one_lake"),
                              envir = environment())
 
     parallel::clusterEvalQ(cl, library(sf))
 
     results_list <- parallel::parLapply(cl, lakes_with_sites, function(lid) {
-      process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg)
+      process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg, fetch_method)
     })
 
     parallel::stopCluster(cl)
   } else {
     message("Using sequential processing")
     results_list <- lapply(lakes_with_sites, function(lid) {
-      process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg)
+      process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg, fetch_method)
     })
   }
 
@@ -208,11 +239,13 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg) {
 #' @param utm_epsg EPSG code for UTM projection
 #' @param lake_name Character lake name
 #' @param lake_osm_id Character OSM ID
+#' @param fetch_method Method for effective fetch: "top3", "max", or "cosine"
 #'
 #' @return List with results, lake, and angles
 #' @noRd
 calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
-                                         lake_name = NULL, lake_osm_id = NULL) {
+                                         lake_name = NULL, lake_osm_id = NULL,
+                                         fetch_method = "top3") {
 
   n_sites <- nrow(sites)
   if (n_sites == 0) {
@@ -309,17 +342,18 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
   results$fetch_mean <- rowMeans(fetch_values, na.rm = TRUE)
   results$fetch_max <- apply(fetch_values, 1, max, na.rm = TRUE)
 
-  # Effective fetch (mean of top 3)
-  results$fetch_effective <- apply(fetch_values, 1, function(x) {
-    mean(sort(x, decreasing = TRUE)[1:3], na.rm = TRUE)
-  })
+  # Calculate effective fetch using specified method
+  results$fetch_effective <- calc_effective_fetch(fetch_values, angles, fetch_method)
 
   # Calculate orbital velocity using depth (depth_m column should exist from sites_with_lakes)
   site_depth <- if ("depth_m" %in% names(results)) results$depth_m else get_opt("default_depth_m")
   results$orbital_effective <- calc_orbital(results$fetch_effective, depth_m = site_depth)
 
-  results$exposure_category <- ifelse(results$fetch_effective < 2500, "Sheltered",
-                                      ifelse(results$fetch_effective > 5000, "Exposed",
+  # Exposure classification using configurable thresholds
+  sheltered_threshold <- get_opt("exposure_sheltered_m")
+  exposed_threshold <- get_opt("exposure_exposed_m")
+  results$exposure_category <- ifelse(results$fetch_effective < sheltered_threshold, "Sheltered",
+                                      ifelse(results$fetch_effective > exposed_threshold, "Exposed",
                                              "Moderate"))
 
   results_sf <- sf::st_sf(results, geometry = sf::st_geometry(sites_buffered))
@@ -476,6 +510,67 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = NULL) {
   return(sf::st_point(c(new_x, new_y)))
 }
 
+#' Calculate Effective Fetch
+#'
+#' Calculate effective fetch using one of three methods.
+#'
+#' @param fetch_matrix Matrix of directional fetch values (rows = sites, cols = angles)
+#' @param angles Numeric vector of angles in degrees
+#' @param method Method: "top3", "max", or "cosine"
+#'
+#' @return Numeric vector of effective fetch values
+#' @noRd
+calc_effective_fetch <- function(fetch_matrix, angles, method = "top3") {
+
+  if (method == "max") {
+    # Simple maximum
+    return(apply(fetch_matrix, 1, max, na.rm = TRUE))
+
+  } else if (method == "top3") {
+    # Mean of 3 highest values
+    return(apply(fetch_matrix, 1, function(x) {
+      mean(sort(x, decreasing = TRUE)[1:3], na.rm = TRUE)
+    }))
+
+  } else if (method == "cosine") {
+    # SPM/CERC cosine-weighted method
+    # Uses 9 radials centered on direction of maximum fetch, at 6-degree intervals
+    # Weighted by cosine of angle from center direction
+    # Reference: Shore Protection Manual (1984), Equation 3-36
+
+    angle_resolution <- if (length(angles) > 1) angles[2] - angles[1] else 5
+    n_radials <- 9
+    radial_spacing <- 6  # degrees
+
+    return(apply(fetch_matrix, 1, function(fetch_row) {
+      # Find direction of maximum fetch
+      max_idx <- which.max(fetch_row)
+      max_angle <- angles[max_idx]
+
+      # Calculate angles for 9 radials centered on max direction
+      offsets <- seq(-(n_radials - 1) / 2, (n_radials - 1) / 2) * radial_spacing
+      radial_angles <- (max_angle + offsets) %% 360
+
+      # Get fetch values at these angles (interpolate if needed)
+      radial_fetches <- sapply(radial_angles, function(a) {
+        # Find closest angle in our measurements
+        angle_diff <- abs(angles - a)
+        angle_diff <- pmin(angle_diff, 360 - angle_diff)  # Handle wrap-around
+        closest_idx <- which.min(angle_diff)
+        fetch_row[closest_idx]
+      })
+
+      # Cosine weights (in radians)
+      cos_weights <- cos(offsets * pi / 180)
+
+      # Weighted average
+      sum(radial_fetches * cos_weights) / sum(cos_weights)
+    }))
+  } else {
+    stop("Unknown fetch method: ", method)
+  }
+}
+
 #' Calculate Orbital Velocity
 #'
 #' Estimate wave-induced near-bottom orbital velocity based on fetch, wind speed,
@@ -486,6 +581,26 @@ nudge_inward <- function(point_geom, poly_boundary, poly_full, dist = NULL) {
 #' @param wind_speed Wind speed in m/s
 #'
 #' @return Orbital velocity in m/s
+#'
+#' @details
+#' Uses simplified SMB equations from the Shore Protection Manual (1984):
+#' \itemize{
+#'   \item Wave height: H_s = 0.0016 * sqrt(F) * U (simplified deep-water form)
+#'   \item Wave period: T_p = 0.286 * F^0.33 * U^0.33
+#'   \item Orbital velocity: U_b = (pi * H / T) * exp(-k * d)
+#' }
+#'
+#' The full SMB equations use hyperbolic tangent functions for finite-depth
+#' effects. This simplified version is appropriate for small to medium lakes
+#' where fetch-limited conditions dominate.
+#'
+#' @references
+#' Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
+#' Engineering Research Center. 4th Edition.
+#'
+#' Sverdrup, H. U., & Munk, W. H. (1947). Wind, sea, and swell: theory of
+#' relations for forecasting. U.S. Navy Hydrographic Office, Pub. No. 601.
+#'
 #' @noRd
 calc_orbital <- function(fetch_m, depth_m = NULL, wind_speed = NULL) {
   if (is.null(wind_speed)) {
