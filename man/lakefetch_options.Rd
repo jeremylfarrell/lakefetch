@@ -31,9 +31,11 @@ highest directional fetches, default), "max" (maximum directional fetch),
 or "cosine" (SPM/CERC cosine-weighted average across 9 radials at 6-degree
 intervals; see Shore Protection Manual, 1984)}
 \item{exposure_sheltered_m}{Fetch threshold below which sites are classified
-as "Sheltered" (default: 2500 m)}
+as "Sheltered" (default: 2500 m). This is a practical default; no universal
+standard exists in the literature. Adjust based on your study system.}
 \item{exposure_exposed_m}{Fetch threshold above which sites are classified
-as "Exposed" (default: 5000 m). Sites between thresholds are "Moderate".}
+as "Exposed" (default: 5000 m). Sites between thresholds are "Moderate".
+See Mason et al. (2018) for Great Lakes exposure mapping methodology.}
 \item{use_parallel}{Use parallel processing for multi-lake (default: TRUE)}
 \item{use_nhd}{Use NHD integration if available (default: TRUE)}
 }
@@ -48,4 +50,12 @@ lakefetch_options()$buffer_distance_m
 # Set options
 lakefetch_options(buffer_distance_m = 20, angle_resolution_deg = 10)
 
+}
+\references{
+Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
+Engineering Research Center. 4th Edition.
+
+Mason, L. A., Riseng, C. M., Laber, A. L., & Rutherford, E. S. (2018).
+Effective fetch and relative exposure index maps for the Laurentian
+Great Lakes. Scientific Data, 5, 180295.
 }

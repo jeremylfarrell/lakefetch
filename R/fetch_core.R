@@ -582,20 +582,26 @@ calc_effective_fetch <- function(fetch_matrix, angles, method = "top3") {
 #' @return Orbital velocity in m/s
 #'
 #' @details
-#' Uses simplified SMB equations from the Shore Protection Manual (1984):
+#' Uses simplified SMB-style equations for fetch-limited wave hindcasting:
 #' \itemize{
-#'   \item Wave height: H_s = 0.0016 * sqrt(F) * U (simplified deep-water form)
+#'   \item Wave height: H_s = 0.0016 * sqrt(F) * U
 #'   \item Wave period: T_p = 0.286 * F^0.33 * U^0.33
 #'   \item Orbital velocity: U_b = (pi * H / T) * exp(-k * d)
 #' }
 #'
-#' The full SMB equations use hyperbolic tangent functions for finite-depth
-#' effects. This simplified version is appropriate for small to medium lakes
-#' where fetch-limited conditions dominate.
+#' These simplified coefficients approximate the full SMB equations, which
+#' use hyperbolic tangent functions (Shore Protection Manual, 1984, Eq. 3-39).
+#' The full deep-water SMB formulation is:
+#' H = (U^2 / g) * 0.283 * tanh(0.0125 * (g*F/U^2)^0.42)
+#'
+#' The simplified form used here is appropriate for small to medium lakes
+#' where fetch-limited conditions dominate and computational efficiency
+#' is desired. For critical applications, consider implementing the full
+#' SPM equations.
 #'
 #' @references
 #' Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
-#' Engineering Research Center. 4th Edition.
+#' Engineering Research Center. 4th Edition. Chapter 3.
 #'
 #' Sverdrup, H. U., & Munk, W. H. (1947). Wind, sea, and swell: theory of
 #' relations for forecasting. U.S. Navy Hydrographic Office, Pub. No. 601.
