@@ -493,7 +493,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::hr(),
           shiny::h5("Instructions"),
           shiny::p("Click any marker to view fetch rays."),
-          shiny::p(shiny::strong("Click on a lake"), " to analyze a new point."),
+          shiny::p(shiny::strong("Click on a lake polygon"), " to analyze a new point on that lake."),
           shiny::hr(),
           shiny::h5("Selected Site:"),
           shiny::textOutput("selected_site"),

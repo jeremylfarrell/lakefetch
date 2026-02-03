@@ -512,16 +512,34 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
           # Found a matching lake - assign all unmatched sites with this lake name
           lake_match <- water_polygons[exact_match[1], ]
           site_indices <- unmatched_idx[sites_sf[[site_lake_col]][unmatched_idx] == site_lake_name]
+          name_match_tolerance <- tolerance_m * 5
 
+          matched_count <- 0
+          skipped_sites <- character(0)
           for (idx in site_indices) {
-            sites_sf$lake_osm_id[idx] <- lake_match$osm_id
-            sites_sf$lake_name[idx] <- lake_match$name
-            if ("area_km2" %in% names(lake_match)) {
-              sites_sf$lake_area_km2[idx] <- lake_match$area_km2
+            site_dist <- as.numeric(sf::st_distance(sf::st_geometry(sites_sf)[idx], lake_match))
+            if (site_dist <= name_match_tolerance) {
+              sites_sf$lake_osm_id[idx] <- lake_match$osm_id
+              sites_sf$lake_name[idx] <- lake_match$name
+              if ("area_km2" %in% names(lake_match)) {
+                sites_sf$lake_area_km2[idx] <- lake_match$area_km2
+              }
+              matched_count <- matched_count + 1
+            } else {
+              skipped_sites <- c(skipped_sites, sites_sf$Site[idx])
             }
           }
-          message("    Matched ", length(site_indices), " sites to '", lake_match$name,
-                  "' via name matching from '", site_lake_name, "'")
+          if (matched_count > 0) {
+            message("    Matched ", matched_count, " sites to '", lake_match$name,
+                    "' via name matching from '", site_lake_name, "'")
+          }
+          if (length(skipped_sites) > 0) {
+            warning("Skipped ", length(skipped_sites), " site(s) named '", site_lake_name,
+                    "': too far from OSM lake '", lake_match$name,
+                    "' (>", name_match_tolerance, "m). ",
+                    "Site(s) may be on a different water body. ",
+                    "Sites: ", paste(skipped_sites, collapse = ", "))
+          }
         } else {
           # Report unmatched lake name
           n_unmatched_this_lake <- sum(sites_sf[[site_lake_col]][unmatched_idx] == site_lake_name)
