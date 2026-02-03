@@ -8,9 +8,31 @@ Last updated: 2026-02-01
 
 **GitHub:** https://github.com/jeremylfarrell/lakefetch
 
-## Current Status: READY FOR CRAN SUBMISSION ✅
+## Current Status: AWAITING COLLEAGUE FEEDBACK
 
-All checks pass. Awaiting colleague feedback before submitting.
+All checks pass locally (0 errors, 0 warnings, 1 note). Waiting on feedback from Lucas and Fenly before re-running win-builder/R-hub and submitting to CRAN.
+
+### Recent Changes (2026-02-03)
+
+1. **Fixed name-based lake matching** (`R/lake_sources.R`, Pass 3 of `assign_sites_to_lakes()`): Added a distance check (`tolerance_m * 5`, default 500m) so sites aren't silently assigned to a same-named lake far away. Sites that fail the proximity check are skipped with a warning. This fixes the Raquette Lake mismatch bug reported by colleague testing with Adirondack sites.
+
+2. **Clarified Shiny app instructions** (`R/shiny_app.R`, line 496): Changed "Click on a lake" to "Click on a lake polygon to analyze a new point on that lake." per Kait's feedback that the original wording implied any lake on the map could be clicked.
+
+### Next Steps
+
+- Wait for feedback from Lucas and Fenly
+- Incorporate any additional changes
+- Re-run win-builder and R-hub checks (do NOT re-run until all feedback is in)
+- Update `cran-comments.md` if needed
+- Submit to CRAN
+
+### Colleague Feedback Tracker
+
+| Colleague | Status | Notes |
+|-----------|--------|-------|
+| Kait | Received | Wind rose overlay idea (not implementing — out of scope for this package). App click wording fixed. |
+| Lucas | Pending | Kait forwarding to him |
+| Fenly | Pending | Kait forwarding to them |
 
 ### Test Results
 
