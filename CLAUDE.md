@@ -22,7 +22,7 @@ All checks pass locally (0 errors, 0 warnings, 1 note). Waiting on feedback from
 
 4. **Invalid coordinate filtering** (`R/data_loading.R`): Added (0,0) coordinate detection and removal with warning.
 
-5. **Optimized OSM downloads** (`R/lake_sources.R`): Refactored `download_lake_osm()` to use cluster-based querying when sites span >0.5 degrees. Added `cluster_sites()` helper (grid-based grouping at 0.1° resolution) and `download_lake_osm_single()` helper (single-bbox query with optional name filtering). Name-filtered Overpass queries skip broad `natural=water` queries when lake names are available and match. Minimum area filter (0.0001 km²) removes tiny irrelevant water bodies. Fixes Overpass API timeouts for geographically spread datasets like GLEON.
+5. **Optimized OSM downloads** (`R/lake_sources.R`): Refactored `download_lake_osm()` for geographically spread datasets like GLEON (429 sites worldwide). When site spread exceeds 0.5°, sites are grouped into spatial clusters (grid-based at 0.1° resolution via `cluster_sites()`) and each cluster gets a small bbox (~0.1°) with a single `natural=water` Overpass query. This replaces the old single-bbox approach that would cover the entire globe and timeout. Key features: server rotation across 3 Overpass endpoints, 1s rate limiting between queries, automatic retry on server errors, minimum area filter (0.0001 km²) to remove tiny water bodies. Helper functions extracted as top-level: `extract_osm_polys()`, `query_osm_by_name()`, `download_lake_osm_single()`. For small-spread sites (≤0.5°), the original single-bbox behavior is preserved.
 
 ### Previous Changes (2026-02-03)
 
