@@ -329,8 +329,9 @@ download_lake_osm <- function(sites_df) {
     }
     start_time <- Sys.time()
 
-    # Overpass rate limit helper: rotate servers and track timing
+    # Track failed clusters and rotate servers
     query_count <- 0
+    failed_clusters <- integer(0)
 
     for (ci in seq_along(clusters)) {
       cluster_idx <- clusters[[ci]]
@@ -349,32 +350,28 @@ download_lake_osm <- function(sites_df) {
       names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
 
       # Single natural=water query per cluster (small bbox = fast)
-      server_idx <- ((query_count) %% length(overpass_servers)) + 1
-      tryCatch({
-        osmdata::set_overpass_url(overpass_servers[server_idx])
-        osm_query <- osmdata::opq(bbox = cl_bbox_vec, timeout = 30)
-        osm_query <- osmdata::add_osm_feature(osm_query,
-                                               key = "natural", value = "water")
-        osm_result <- osmdata::osmdata_sf(osm_query)
-        water_list <- c(water_list, extract_osm_polys(osm_result))
-      }, error = function(e) {
-        msg <- conditionMessage(e)
-        if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
-          # Retry once with a different server after a pause
-          Sys.sleep(3)
-          retry_server <- ((server_idx) %% length(overpass_servers)) + 1
-          tryCatch({
-            osmdata::set_overpass_url(overpass_servers[retry_server])
-            osm_query <- osmdata::opq(bbox = cl_bbox_vec, timeout = 30)
-            osm_query <- osmdata::add_osm_feature(osm_query,
-                                                   key = "natural", value = "water")
-            osm_result <- osmdata::osmdata_sf(osm_query)
-            water_list <<- c(water_list, extract_osm_polys(osm_result))
-          }, error = function(e2) {
-            NULL  # Skip silently on second failure
-          })
-        }
-      })
+      # Try up to 3 attempts across different servers
+      cluster_success <- FALSE
+      for (attempt in 1:3) {
+        if (cluster_success) break
+        server_idx <- ((query_count + attempt - 1) %% length(overpass_servers)) + 1
+        tryCatch({
+          osmdata::set_overpass_url(overpass_servers[server_idx])
+          osm_query <- osmdata::opq(bbox = cl_bbox_vec, timeout = 30)
+          osm_query <- osmdata::add_osm_feature(osm_query,
+                                                 key = "natural", value = "water")
+          osm_result <- osmdata::osmdata_sf(osm_query)
+          water_list <- c(water_list, extract_osm_polys(osm_result))
+          cluster_success <- TRUE
+        }, error = function(e) {
+          if (attempt < 3) {
+            Sys.sleep(2)
+          }
+        })
+      }
+      if (!cluster_success) {
+        failed_clusters <- c(failed_clusters, ci)
+      }
 
       query_count <- query_count + 1
 
@@ -395,6 +392,14 @@ download_lake_osm <- function(sites_df) {
 
     elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
     message("  Download complete in ", round(elapsed, 1), " minutes")
+
+    if (length(failed_clusters) > 0) {
+      message("  WARNING: ", length(failed_clusters),
+              " cluster(s) failed after 3 attempts: ",
+              paste(failed_clusters, collapse = ", "))
+      message("  Some lake boundaries may be missing. ",
+              "Try running again or provide a local boundary file.")
+    }
 
     # Reset to default server
     tryCatch(osmdata::set_overpass_url(overpass_servers[1]),
