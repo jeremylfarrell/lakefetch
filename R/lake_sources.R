@@ -318,11 +318,16 @@ download_lake_osm <- function(sites_df) {
     # query. Small bboxes return quickly with just nearby water bodies.
     clusters <- cluster_sites(sites_sf)
     n_clusters <- length(clusters)
-    est_minutes <- round(n_clusters * 2 / 60, 0)
 
     message("  Site spread is ", round(site_spread, 1),
-            " degrees - querying ", n_clusters,
-            " site clusters (~", est_minutes, " min)")
+            " degrees - querying ", n_clusters, " site clusters")
+
+    # Progress bar for interactive sessions
+    use_pb <- interactive()
+    if (use_pb) {
+      pb <- utils::txtProgressBar(min = 0, max = n_clusters, style = 3)
+    }
+    start_time <- Sys.time()
 
     # Overpass rate limit helper: rotate servers and track timing
     query_count <- 0
@@ -342,11 +347,6 @@ download_lake_osm <- function(sites_df) {
       cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
                        cl_bbox["xmax"], cl_bbox["ymax"])
       names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
-
-      # Progress message every 10 clusters or for the first few
-      if (ci <= 3 || ci %% 50 == 0 || ci == n_clusters) {
-        message("  Querying cluster ", ci, "/", n_clusters, "...")
-      }
 
       # Single natural=water query per cluster (small bbox = fast)
       server_idx <- ((query_count) %% length(overpass_servers)) + 1
@@ -371,20 +371,30 @@ download_lake_osm <- function(sites_df) {
             osm_result <- osmdata::osmdata_sf(osm_query)
             water_list <<- c(water_list, extract_osm_polys(osm_result))
           }, error = function(e2) {
-            message("    Failed cluster ", ci, ": ", conditionMessage(e2))
+            NULL  # Skip silently on second failure
           })
-        } else {
-          message("    Error cluster ", ci, ": ", msg)
         }
       })
 
       query_count <- query_count + 1
+
+      # Update progress bar
+      if (use_pb) {
+        utils::setTxtProgressBar(pb, ci)
+      }
 
       # Rate limit: 1 second between queries to respect Overpass usage policy
       if (ci < n_clusters) {
         Sys.sleep(1)
       }
     }
+
+    if (use_pb) {
+      close(pb)
+    }
+
+    elapsed <- as.numeric(difftime(Sys.time(), start_time, units = "mins"))
+    message("  Download complete in ", round(elapsed, 1), " minutes")
 
     # Reset to default server
     tryCatch(osmdata::set_overpass_url(overpass_servers[1]),
