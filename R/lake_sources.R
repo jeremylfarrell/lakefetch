@@ -721,7 +721,9 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
       }
     }
 
-    buffer_matches <- sum(!is.na(sites_sf$lake_osm_id)) - sum(direct_matches)
+    matched_after_buffer <- sum(!is.na(sites_sf$lake_osm_id))
+    matched_before_buffer <- n_sites - length(unmatched_idx)
+    buffer_matches <- matched_after_buffer - matched_before_buffer
     message("    ", buffer_matches, " additional sites matched within tolerance")
   }
 
