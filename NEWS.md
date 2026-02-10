@@ -2,10 +2,10 @@
 
 ## Improvements
 
-* **Optimized OSM downloads for spread-out sites**: `download_lake_osm()` now uses cluster-based querying when sites span more than 0.5 degrees. Instead of a single bounding box covering all sites (which could span the entire globe for datasets like GLEON), sites are grouped into spatial clusters and queried individually. This prevents Overpass API timeouts and avoids downloading irrelevant water bodies.
-* **Name-filtered Overpass queries**: When a `lake.name` column is available, the function first tries a name-filtered query to download only the relevant lake polygon, skipping the broad `natural=water` query when successful. This dramatically reduces data for known-name lakes.
+* **Optimized OSM downloads for spread-out sites**: `download_lake_osm()` now handles geographically spread datasets (e.g., GLEON's 429 global sites). When site spread exceeds 0.5 degrees, sites are grouped into spatial clusters (~0.1 degree grid) and each cluster gets a small bounding box query. This replaces the old single-bbox approach that would cover the entire globe and timeout. Tested with 50 globally-spread GLEON sites (48/50 matched, 26 min download).
+* **Robust Overpass API handling**: Each cluster query retries up to 3 times across 3 different Overpass servers, with 1-second rate limiting between queries. Failed clusters are reported at the end so users know which lake boundaries may be missing.
 * **Minimum area filter**: Water bodies smaller than 0.0001 km² (100 m²) are automatically filtered out after download, removing garden ponds, fountains, and other tiny features.
-
+* **Download progress bar**: OSM cluster downloads now display a progress bar and report elapsed time when complete.
 * **Custom column names**: `load_sites()` now accepts `lat_col`, `lon_col`, `site_col`, and `lake_col` arguments to explicitly specify column names when auto-detection doesn't match your data format.
 * **Progress bars**: Long-running fetch calculations now display progress bars in interactive sessions, so users can see that computation is proceeding. Progress is shown for site buffering, directional fetch calculation, and multi-lake sequential processing.
 * **Shiny app performance**: `fetch_app()` and `fetch_app_upload()` now use a hybrid approach for large datasets. For small datasets (<=50 sites), rose diagrams are pre-rendered in popups as before. For large datasets (>50 sites), rose diagrams and rays are generated on demand when a marker is clicked, preventing the app from freezing or crashing at startup.
@@ -14,6 +14,8 @@
 ## Bug fixes
 
 * **Invalid (0,0) coordinates**: `load_sites()` now detects and removes rows where both latitude and longitude are 0, which typically indicates missing data rather than a real location.
+* **Geometry processing crash**: Fixed `st_is_valid()` crash when processing corrupted or empty geometries from large OSM downloads. Empty geometries are now skipped and invalid ones are repaired automatically.
+* **Buffer match count**: Fixed negative match count display in `assign_sites_to_lakes()` when `st_join` produced duplicate rows.
 
 # lakefetch 0.1.0
 
