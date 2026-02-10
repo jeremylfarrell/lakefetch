@@ -313,117 +313,82 @@ download_lake_osm <- function(sites_df) {
     water_list <- download_lake_osm_single(bbox_vec, cluster_lake_names,
                                            overpass_servers)
   } else {
-    # --- Large spread: cluster-based querying ---
+    # --- Large spread: per-cluster small bbox queries ---
+    # Each cluster gets a tiny bbox (~0.1 degree) and a single natural=water
+    # query. Small bboxes return quickly with just nearby water bodies.
     clusters <- cluster_sites(sites_sf)
     n_clusters <- length(clusters)
+    est_minutes <- round(n_clusters * 2 / 60, 0)
 
-    # When lake names are available and there are many clusters, batch
-    # names into groups and query with regex OR patterns (much fewer API calls)
-    use_batch_names <- FALSE
-    if (!is.null(lake_name_col) && n_clusters > 20) {
-      all_lake_names <- unique(sites_sf[[lake_name_col]])
-      all_lake_names <- all_lake_names[!is.na(all_lake_names) &
-                                        nchar(trimws(all_lake_names)) > 0]
+    message("  Site spread is ", round(site_spread, 1),
+            " degrees - querying ", n_clusters,
+            " site clusters (~", est_minutes, " min)")
 
-      if (length(all_lake_names) > 0) {
-        use_batch_names <- TRUE
-        batch_size <- 30
-        n_batches <- ceiling(length(all_lake_names) / batch_size)
+    # Overpass rate limit helper: rotate servers and track timing
+    query_count <- 0
 
-        message("  Site spread is ", round(site_spread, 1),
-                " degrees - batching ", length(all_lake_names),
-                " lake names into ", n_batches, " queries")
+    for (ci in seq_along(clusters)) {
+      cluster_idx <- clusters[[ci]]
+      cluster_sf <- sites_sf[cluster_idx, ]
 
-        for (bi in seq_len(n_batches)) {
-          start_idx <- (bi - 1) * batch_size + 1
-          end_idx <- min(bi * batch_size, length(all_lake_names))
-          batch_names <- all_lake_names[start_idx:end_idx]
+      # Compute small bbox around cluster sites with 0.05 degree buffer
+      cl_bbox <- sf::st_bbox(cluster_sf)
+      cl_buffer <- 0.05  # ~5.5 km buffer around site(s)
+      cl_bbox[1] <- cl_bbox[1] - cl_buffer
+      cl_bbox[2] <- cl_bbox[2] - cl_buffer
+      cl_bbox[3] <- cl_bbox[3] + cl_buffer
+      cl_bbox[4] <- cl_bbox[4] + cl_buffer
 
-          # Compute bbox covering all sites for lakes in this batch
-          batch_site_idx <- which(sites_sf[[lake_name_col]] %in% batch_names)
-          batch_sf <- sites_sf[batch_site_idx, ]
+      cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
+                       cl_bbox["xmax"], cl_bbox["ymax"])
+      names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
 
-          message("  Querying batch ", bi, "/", n_batches,
-                  " (", length(batch_names), " lakes, ",
-                  length(batch_site_idx), " sites)...")
+      # Progress message every 10 clusters or for the first few
+      if (ci <= 3 || ci %% 50 == 0 || ci == n_clusters) {
+        message("  Querying cluster ", ci, "/", n_clusters, "...")
+      }
 
-          cl_bbox <- sf::st_bbox(batch_sf)
-          cl_buffer <- 0.05
-          cl_bbox[1] <- cl_bbox[1] - cl_buffer
-          cl_bbox[2] <- cl_bbox[2] - cl_buffer
-          cl_bbox[3] <- cl_bbox[3] + cl_buffer
-          cl_bbox[4] <- cl_bbox[4] + cl_buffer
-
-          cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
-                           cl_bbox["xmax"], cl_bbox["ymax"])
-          names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
-
-          # Query with batched name regex
-          osm_result <- query_osm_by_name(cl_bbox_vec, batch_names,
-                                                   overpass_servers)
-          if (!is.null(osm_result)) {
-            batch_polys <- extract_osm_polys(osm_result)
-            water_list <- c(water_list, batch_polys)
-          }
-
-          # Rate limit between batches
-          if (bi < n_batches) {
-            Sys.sleep(3)
-          }
+      # Single natural=water query per cluster (small bbox = fast)
+      server_idx <- ((query_count) %% length(overpass_servers)) + 1
+      tryCatch({
+        osmdata::set_overpass_url(overpass_servers[server_idx])
+        osm_query <- osmdata::opq(bbox = cl_bbox_vec, timeout = 30)
+        osm_query <- osmdata::add_osm_feature(osm_query,
+                                               key = "natural", value = "water")
+        osm_result <- osmdata::osmdata_sf(osm_query)
+        water_list <- c(water_list, extract_osm_polys(osm_result))
+      }, error = function(e) {
+        msg <- conditionMessage(e)
+        if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
+          # Retry once with a different server after a pause
+          Sys.sleep(3)
+          retry_server <- ((server_idx) %% length(overpass_servers)) + 1
+          tryCatch({
+            osmdata::set_overpass_url(overpass_servers[retry_server])
+            osm_query <- osmdata::opq(bbox = cl_bbox_vec, timeout = 30)
+            osm_query <- osmdata::add_osm_feature(osm_query,
+                                                   key = "natural", value = "water")
+            osm_result <- osmdata::osmdata_sf(osm_query)
+            water_list <<- c(water_list, extract_osm_polys(osm_result))
+          }, error = function(e2) {
+            message("    Failed cluster ", ci, ": ", conditionMessage(e2))
+          })
+        } else {
+          message("    Error cluster ", ci, ": ", msg)
         }
+      })
+
+      query_count <- query_count + 1
+
+      # Rate limit: 1 second between queries to respect Overpass usage policy
+      if (ci < n_clusters) {
+        Sys.sleep(1)
       }
     }
 
-    # Fallback: cluster-based querying without name deduplication
-    if (!use_batch_names) {
-      message("  Site spread is ", round(site_spread, 1),
-              " degrees - using cluster-based querying (",
-              n_clusters, " clusters)")
-      if (n_clusters > 20) {
-        est_minutes <- round(n_clusters * 7 / 60, 0)
-        message("  NOTE: ", n_clusters, " clusters will take ~",
-                est_minutes, " minutes. Consider providing lake names ",
-                "or a local boundary file.")
-      }
-
-      for (ci in seq_along(clusters)) {
-        cluster_idx <- clusters[[ci]]
-        cluster_sf <- sites_sf[cluster_idx, ]
-
-        message("  Querying OSM for cluster ", ci, "/", n_clusters,
-                " (", length(cluster_idx), " sites)...")
-
-        # Compute per-cluster bbox with adaptive buffer
-        cl_bbox <- sf::st_bbox(cluster_sf)
-        cl_spread <- max(cl_bbox["xmax"] - cl_bbox["xmin"],
-                         cl_bbox["ymax"] - cl_bbox["ymin"])
-        cl_buffer <- min(0.05, max(0.01, cl_spread * 0.1))
-        cl_bbox[1] <- cl_bbox[1] - cl_buffer
-        cl_bbox[2] <- cl_bbox[2] - cl_buffer
-        cl_bbox[3] <- cl_bbox[3] + cl_buffer
-        cl_bbox[4] <- cl_bbox[4] + cl_buffer
-
-        cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
-                         cl_bbox["xmax"], cl_bbox["ymax"])
-        names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
-
-        # Get lake names for sites in this cluster
-        cluster_lake_names <- NULL
-        if (!is.null(lake_name_col)) {
-          cluster_lake_names <- unique(cluster_sf[[lake_name_col]])
-        }
-
-        cluster_results <- download_lake_osm_single(cl_bbox_vec,
-                                                     cluster_lake_names,
-                                                     overpass_servers)
-        water_list <- c(water_list, cluster_results)
-
-        # Rate limit between queries
-        if (ci < n_clusters) {
-          Sys.sleep(2)
-        }
-      }
-    }
+    # Reset to default server
+    tryCatch(osmdata::set_overpass_url(overpass_servers[1]),
+             error = function(e) NULL)
   }
 
   # Auto-detect UTM zone from sites
