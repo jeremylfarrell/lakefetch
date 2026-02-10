@@ -22,6 +22,8 @@ All checks pass locally (0 errors, 0 warnings, 1 note). Waiting on feedback from
 
 4. **Invalid coordinate filtering** (`R/data_loading.R`): Added (0,0) coordinate detection and removal with warning.
 
+5. **Optimized OSM downloads** (`R/lake_sources.R`): Refactored `download_lake_osm()` to use cluster-based querying when sites span >0.5 degrees. Added `cluster_sites()` helper (grid-based grouping at 0.1° resolution) and `download_lake_osm_single()` helper (single-bbox query with optional name filtering). Name-filtered Overpass queries skip broad `natural=water` queries when lake names are available and match. Minimum area filter (0.0001 km²) removes tiny irrelevant water bodies. Fixes Overpass API timeouts for geographically spread datasets like GLEON.
+
 ### Previous Changes (2026-02-03)
 
 1. **Fixed name-based lake matching** (`R/lake_sources.R`, Pass 3 of `assign_sites_to_lakes()`): Added a distance check (`tolerance_m * 5`, default 500m) so sites aren't silently assigned to a same-named lake far away. Sites that fail the proximity check are skipped with a warning. This fixes the Raquette Lake mismatch bug reported by colleague testing with Adirondack sites.

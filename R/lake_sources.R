@@ -37,7 +37,187 @@ get_lake_boundary <- function(sites, file = NULL) {
   }
 }
 
+#' Group Sites into Spatial Clusters
+#'
+#' Groups sites by proximity using a grid-based approach. Sites within 0.1
+#' degrees (~11 km) of each other are placed in the same cluster.
+#'
+#' @param sites_sf sf object with site points in WGS84
+#' @return List of integer vectors, each containing row indices for one cluster
+#' @noRd
+cluster_sites <- function(sites_sf) {
+  coords <- sf::st_coordinates(sites_sf)
+  grid_size <- 0.1  # ~11 km
+
+  # Round coordinates to nearest grid cell
+  grid_x <- floor(coords[, 1] / grid_size)
+  grid_y <- floor(coords[, 2] / grid_size)
+  grid_key <- paste(grid_x, grid_y, sep = "_")
+
+  # Group indices by grid cell
+  clusters <- split(seq_len(nrow(sites_sf)), grid_key)
+
+  return(unname(clusters))
+}
+
+#' Download Water Bodies from OSM for a Single Bounding Box
+#'
+#' Queries the Overpass API for water bodies within a bounding box. Optionally
+#' tries a name-filtered query first to reduce data volume.
+#'
+#' @param bbox_vec Named numeric vector with left, bottom, right, top
+#' @param lake_names Optional character vector of lake names to try first
+#' @param overpass_servers Character vector of Overpass API server URLs
+#' @return List of sf data frames with water body polygons
+#' @noRd
+download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
+                                     overpass_servers = NULL) {
+  if (is.null(overpass_servers)) {
+    overpass_servers <- c(
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+    )
+  }
+
+  # Helper to extract polygons from OSM response
+  extract_osm_polys <- function(osm_data) {
+    result <- list()
+    if (!is.null(osm_data$osm_polygons) && nrow(osm_data$osm_polygons) > 0) {
+      std_poly <- standardize_osm_sf(osm_data$osm_polygons)
+      if (!is.null(std_poly) && nrow(std_poly) > 0) {
+        result[[length(result) + 1]] <- std_poly
+        message("    Found ", nrow(std_poly), " polygons")
+      }
+    }
+    if (!is.null(osm_data$osm_multipolygons) && nrow(osm_data$osm_multipolygons) > 0) {
+      std_mpoly <- standardize_osm_sf(osm_data$osm_multipolygons)
+      if (!is.null(std_mpoly) && nrow(std_mpoly) > 0) {
+        result[[length(result) + 1]] <- std_mpoly
+        message("    Found ", nrow(std_mpoly), " multipolygons")
+      }
+    }
+    return(result)
+  }
+
+  # Helper to query OSM with retries across multiple servers
+  query_osm_robust <- function(bbox, key, value, max_attempts = 3) {
+    for (attempt in seq_len(max_attempts)) {
+      server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
+
+      tryCatch({
+        osmdata::set_overpass_url(server)
+        osm_query <- osmdata::opq(bbox = bbox, timeout = 90)
+        osm_query <- osmdata::add_osm_feature(osm_query, key = key, value = value)
+        result <- osmdata::osmdata_sf(osm_query)
+        osmdata::set_overpass_url(overpass_servers[1])
+        return(result)
+      }, error = function(e) {
+        msg <- conditionMessage(e)
+        if (attempt < max_attempts) {
+          if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
+            wait_time <- attempt * 3
+            message("    Server error, trying another server in ", wait_time, "s...")
+            Sys.sleep(wait_time)
+          } else {
+            message("    Error: ", msg)
+          }
+        } else {
+          message("    Failed after ", max_attempts, " attempts: ", msg)
+        }
+        NULL
+      })
+    }
+    tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
+    return(NULL)
+  }
+
+  # Helper to query OSM by name using regex filter
+  query_osm_by_name <- function(bbox, name, max_attempts = 3) {
+    # Escape regex special characters in lake name
+    escaped_name <- gsub("([.\\\\+*?\\[\\^\\]$(){}=!<>|:\\-])", "\\\\\\1", name)
+    for (attempt in seq_len(max_attempts)) {
+      server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
+
+      tryCatch({
+        osmdata::set_overpass_url(server)
+        osm_query <- osmdata::opq(bbox = bbox, timeout = 90)
+        osm_query <- osmdata::add_osm_feature(osm_query,
+                                               key = "natural", value = "water")
+        osm_query <- osmdata::add_osm_feature(osm_query,
+                                               key = "name", value = escaped_name,
+                                               value_exact = FALSE)
+        result <- osmdata::osmdata_sf(osm_query)
+        osmdata::set_overpass_url(overpass_servers[1])
+        return(result)
+      }, error = function(e) {
+        msg <- conditionMessage(e)
+        if (attempt < max_attempts) {
+          if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
+            wait_time <- attempt * 3
+            message("    Server error, trying another server in ", wait_time, "s...")
+            Sys.sleep(wait_time)
+          } else {
+            message("    Error: ", msg)
+          }
+        } else {
+          message("    Failed after ", max_attempts, " attempts: ", msg)
+        }
+        NULL
+      })
+    }
+    tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
+    return(NULL)
+  }
+
+  water_list <- list()
+
+  # Try name-filtered queries first if lake names are available
+  name_query_sufficient <- FALSE
+  if (!is.null(lake_names) && length(lake_names) > 0) {
+    lake_names <- unique(lake_names[!is.na(lake_names) & nchar(trimws(lake_names)) > 0])
+    if (length(lake_names) > 0) {
+      message("    Trying name-filtered query for: ",
+              paste(lake_names, collapse = ", "))
+      for (lname in lake_names) {
+        osm_result <- query_osm_by_name(bbox_vec, lname)
+        if (!is.null(osm_result)) {
+          name_polys <- extract_osm_polys(osm_result)
+          if (length(name_polys) > 0) {
+            water_list <- c(water_list, name_polys)
+            name_query_sufficient <- TRUE
+          }
+        }
+      }
+      if (name_query_sufficient) {
+        message("    Name-filtered query found results, skipping broad query")
+      }
+    }
+  }
+
+  # Fall back to broad queries if name-filtered query didn't find anything
+  if (!name_query_sufficient) {
+    message("    Querying natural=water...")
+    osm_result <- query_osm_robust(bbox_vec, "natural", "water")
+    if (!is.null(osm_result)) {
+      water_list <- c(water_list, extract_osm_polys(osm_result))
+    }
+
+    message("    Querying water=lake...")
+    osm_result <- query_osm_robust(bbox_vec, "water", "lake")
+    if (!is.null(osm_result)) {
+      water_list <- c(water_list, extract_osm_polys(osm_result))
+    }
+  }
+
+  return(water_list)
+}
+
 #' Download Lake Boundary from OpenStreetMap
+#'
+#' Downloads lake boundaries from OpenStreetMap. For geographically spread-out
+#' sites, clusters them and queries per-cluster to avoid downloading the entire
+#' world's water bodies.
 #'
 #' @param sites_df Data frame with latitude and longitude columns
 #'
@@ -61,43 +241,6 @@ download_lake_osm <- function(sites_df) {
                               crs = 4326)
   }
 
-  # Create bounding box with adaptive buffer for OSM coverage
-  # Buffer scales with site spread: 10% of spread, clamped to 0.01-0.05 degrees (~1-5 km)
-  bbox <- sf::st_bbox(sites_sf)
-  site_spread <- max(bbox["xmax"] - bbox["xmin"], bbox["ymax"] - bbox["ymin"])
-  bbox_buffer <- min(0.05, max(0.01, site_spread * 0.1))
-  bbox[1] <- bbox[1] - bbox_buffer
-  bbox[2] <- bbox[2] - bbox_buffer
-  bbox[3] <- bbox[3] + bbox_buffer
-  bbox[4] <- bbox[4] + bbox_buffer
-
-  # Convert bbox to vector format for osmdata
-  bbox_vec <- c(bbox["xmin"], bbox["ymin"], bbox["xmax"], bbox["ymax"])
-  names(bbox_vec) <- c("left", "bottom", "right", "top")
-
-  message("Downloading lake boundaries from OpenStreetMap...")
-  message("  Bounding box: [", paste(round(bbox_vec, 4), collapse = ", "), "]")
-
-  # Helper to extract polygons from OSM response
-  extract_osm_polys <- function(osm_data) {
-    result <- list()
-    if (!is.null(osm_data$osm_polygons) && nrow(osm_data$osm_polygons) > 0) {
-      std_poly <- standardize_osm_sf(osm_data$osm_polygons)
-      if (!is.null(std_poly) && nrow(std_poly) > 0) {
-        result[[length(result) + 1]] <- std_poly
-        message("    Found ", nrow(std_poly), " polygons")
-      }
-    }
-    if (!is.null(osm_data$osm_multipolygons) && nrow(osm_data$osm_multipolygons) > 0) {
-      std_mpoly <- standardize_osm_sf(osm_data$osm_multipolygons)
-      if (!is.null(std_mpoly) && nrow(std_mpoly) > 0) {
-        result[[length(result) + 1]] <- std_mpoly
-        message("    Found ", nrow(std_mpoly), " multipolygons")
-      }
-    }
-    return(result)
-  }
-
   # Overpass servers to try (main server often overloaded)
   overpass_servers <- c(
     "https://overpass-api.de/api/interpreter",
@@ -105,60 +248,83 @@ download_lake_osm <- function(sites_df) {
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
   )
 
-  # Helper to query OSM with retries across multiple servers
-  query_osm_robust <- function(bbox, key, value, max_attempts = 3) {
-    for (attempt in seq_len(max_attempts)) {
-      # Rotate through servers
-      server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
-
-      tryCatch({
-        # Set the Overpass server
-        osmdata::set_overpass_url(server)
-
-        osm_query <- osmdata::opq(bbox = bbox, timeout = 90)
-        osm_query <- osmdata::add_osm_feature(osm_query, key = key, value = value)
-        result <- osmdata::osmdata_sf(osm_query)
-
-        # Reset to default server
-        osmdata::set_overpass_url(overpass_servers[1])
-        return(result)
-
-      }, error = function(e) {
-        msg <- conditionMessage(e)
-        if (attempt < max_attempts) {
-          # Check if it's a server error worth retrying
-          if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
-            wait_time <- attempt * 3
-            message("    Server error, trying another server in ", wait_time, "s...")
-            Sys.sleep(wait_time)
-          } else {
-            message("    Error: ", msg)
-          }
-        } else {
-          message("    Failed after ", max_attempts, " attempts: ", msg)
-        }
-        NULL
-      })
+  # Detect lake name column if available
+  lake_name_col <- NULL
+  for (col in c("lake.name", "lake_name", "lakename", "Lake", "lake", "waterbody")) {
+    if (col %in% names(sites_sf)) {
+      lake_name_col <- col
+      break
     }
-    # Reset to default server on failure
-    tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
-    return(NULL)
   }
+
+  # Create bounding box and check site spread
+  bbox <- sf::st_bbox(sites_sf)
+  site_spread <- max(bbox["xmax"] - bbox["xmin"], bbox["ymax"] - bbox["ymin"])
+
+  message("Downloading lake boundaries from OpenStreetMap...")
 
   water_list <- list()
 
-  # Query for natural=water (catches most lakes, ponds, reservoirs)
-  message("  Querying natural=water...")
-  osm_result <- query_osm_robust(bbox_vec, "natural", "water")
-  if (!is.null(osm_result)) {
-    water_list <- c(water_list, extract_osm_polys(osm_result))
-  }
+  if (site_spread <= 0.5) {
+    # --- Small spread: single bbox query (current behavior) ---
+    bbox_buffer <- min(0.05, max(0.01, site_spread * 0.1))
+    bbox[1] <- bbox[1] - bbox_buffer
+    bbox[2] <- bbox[2] - bbox_buffer
+    bbox[3] <- bbox[3] + bbox_buffer
+    bbox[4] <- bbox[4] + bbox_buffer
 
-  # Also query water=lake (some lakes only have this tag)
-  message("  Querying water=lake...")
-  osm_result <- query_osm_robust(bbox_vec, "water", "lake")
-  if (!is.null(osm_result)) {
-    water_list <- c(water_list, extract_osm_polys(osm_result))
+    bbox_vec <- c(bbox["xmin"], bbox["ymin"], bbox["xmax"], bbox["ymax"])
+    names(bbox_vec) <- c("left", "bottom", "right", "top")
+
+    message("  Bounding box: [", paste(round(bbox_vec, 4), collapse = ", "), "]")
+
+    # Get lake names for name-filtered query
+    cluster_lake_names <- NULL
+    if (!is.null(lake_name_col)) {
+      cluster_lake_names <- unique(sites_sf[[lake_name_col]])
+    }
+
+    water_list <- download_lake_osm_single(bbox_vec, cluster_lake_names,
+                                           overpass_servers)
+  } else {
+    # --- Large spread: cluster-based querying ---
+    clusters <- cluster_sites(sites_sf)
+    message("  Site spread is ", round(site_spread, 1),
+            " degrees - using cluster-based querying (",
+            length(clusters), " clusters)")
+
+    for (ci in seq_along(clusters)) {
+      cluster_idx <- clusters[[ci]]
+      cluster_sf <- sites_sf[cluster_idx, ]
+
+      message("  Querying OSM for cluster ", ci, "/", length(clusters),
+              " (", length(cluster_idx), " sites)...")
+
+      # Compute per-cluster bbox with adaptive buffer
+      cl_bbox <- sf::st_bbox(cluster_sf)
+      cl_spread <- max(cl_bbox["xmax"] - cl_bbox["xmin"],
+                       cl_bbox["ymax"] - cl_bbox["ymin"])
+      cl_buffer <- min(0.05, max(0.01, cl_spread * 0.1))
+      cl_bbox[1] <- cl_bbox[1] - cl_buffer
+      cl_bbox[2] <- cl_bbox[2] - cl_buffer
+      cl_bbox[3] <- cl_bbox[3] + cl_buffer
+      cl_bbox[4] <- cl_bbox[4] + cl_buffer
+
+      cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
+                       cl_bbox["xmax"], cl_bbox["ymax"])
+      names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
+
+      # Get lake names for sites in this cluster
+      cluster_lake_names <- NULL
+      if (!is.null(lake_name_col)) {
+        cluster_lake_names <- unique(cluster_sf[[lake_name_col]])
+      }
+
+      cluster_results <- download_lake_osm_single(cl_bbox_vec,
+                                                   cluster_lake_names,
+                                                   overpass_servers)
+      water_list <- c(water_list, cluster_results)
+    }
   }
 
   # Auto-detect UTM zone from sites
@@ -235,6 +401,15 @@ download_lake_osm <- function(sites_df) {
 
   # Calculate areas for reference
   all_lakes_utm$area_km2 <- as.numeric(sf::st_area(all_lakes_utm)) / 1e6
+
+  # Filter out tiny water bodies (< 0.0001 km2 = 100 m2)
+  min_area_km2 <- 0.0001
+  tiny_mask <- all_lakes_utm$area_km2 < min_area_km2
+  n_tiny <- sum(tiny_mask)
+  if (n_tiny > 0) {
+    message("  Filtered ", n_tiny, " water bodies < ", min_area_km2, " km2")
+    all_lakes_utm <- all_lakes_utm[!tiny_mask, ]
+  }
 
   # Deduplicate by osm_id (keep largest polygon if duplicates)
   unique_ids <- unique(all_lakes_utm$osm_id)

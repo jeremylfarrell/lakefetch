@@ -2,6 +2,10 @@
 
 ## Improvements
 
+* **Optimized OSM downloads for spread-out sites**: `download_lake_osm()` now uses cluster-based querying when sites span more than 0.5 degrees. Instead of a single bounding box covering all sites (which could span the entire globe for datasets like GLEON), sites are grouped into spatial clusters and queried individually. This prevents Overpass API timeouts and avoids downloading irrelevant water bodies.
+* **Name-filtered Overpass queries**: When a `lake.name` column is available, the function first tries a name-filtered query to download only the relevant lake polygon, skipping the broad `natural=water` query when successful. This dramatically reduces data for known-name lakes.
+* **Minimum area filter**: Water bodies smaller than 0.0001 km² (100 m²) are automatically filtered out after download, removing garden ponds, fountains, and other tiny features.
+
 * **Custom column names**: `load_sites()` now accepts `lat_col`, `lon_col`, `site_col`, and `lake_col` arguments to explicitly specify column names when auto-detection doesn't match your data format.
 * **Progress bars**: Long-running fetch calculations now display progress bars in interactive sessions, so users can see that computation is proceeding. Progress is shown for site buffering, directional fetch calculation, and multi-lake sequential processing.
 * **Shiny app performance**: `fetch_app()` and `fetch_app_upload()` now use a hybrid approach for large datasets. For small datasets (<=50 sites), rose diagrams are pre-rendered in popups as before. For large datasets (>50 sites), rose diagrams and rays are generated on demand when a marker is clicked, preventing the app from freezing or crashing at startup.
