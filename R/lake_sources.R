@@ -445,20 +445,30 @@ download_lake_osm <- function(sites_df) {
   processed_lakes <- list()
 
   for (i in seq_len(nrow(all_water_utm))) {
-    lake_poly <- all_water_utm[i, ]
-    geom_type <- sf::st_geometry_type(lake_poly, by_geometry = FALSE)
+    tryCatch({
+      lake_poly <- all_water_utm[i, ]
 
-    if (geom_type %in% c("MULTIPOLYGON", "GEOMETRYCOLLECTION")) {
-      lake_parts <- sf::st_cast(lake_poly, "POLYGON")
-      lake_areas <- sf::st_area(lake_parts)
-      lake_poly <- lake_parts[which.max(lake_areas), ]
-    }
+      # Skip empty geometries
+      if (sf::st_is_empty(lake_poly)) next
 
-    if (!all(sf::st_is_valid(lake_poly))) {
-      lake_poly <- sf::st_make_valid(lake_poly)
-    }
+      geom_type <- sf::st_geometry_type(lake_poly, by_geometry = FALSE)
 
-    processed_lakes[[i]] <- lake_poly
+      if (geom_type %in% c("MULTIPOLYGON", "GEOMETRYCOLLECTION")) {
+        lake_parts <- sf::st_cast(lake_poly, "POLYGON")
+        lake_areas <- sf::st_area(lake_parts)
+        lake_poly <- lake_parts[which.max(lake_areas), ]
+      }
+
+      validity <- sf::st_is_valid(lake_poly)
+      if (is.na(validity) || !all(validity)) {
+        lake_poly <- sf::st_make_valid(lake_poly)
+      }
+
+      processed_lakes[[length(processed_lakes) + 1]] <- lake_poly
+    }, error = function(e) {
+      # Skip problematic geometries silently
+      NULL
+    })
   }
 
   all_lakes_utm <- do.call(rbind, processed_lakes)
