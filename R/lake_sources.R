@@ -68,10 +68,13 @@ cluster_sites <- function(sites_sf) {
 #' @param bbox_vec Named numeric vector with left, bottom, right, top
 #' @param lake_names Optional character vector of lake names to try first
 #' @param overpass_servers Character vector of Overpass API server URLs
+#' @param name_only If TRUE, skip broad natural=water fallback when name query
+#'   fails. Used in many-cluster mode to reduce API load.
 #' @return List of sf data frames with water body polygons
 #' @noRd
 download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
-                                     overpass_servers = NULL) {
+                                     overpass_servers = NULL,
+                                     name_only = FALSE) {
   if (is.null(overpass_servers)) {
     overpass_servers <- c(
       "https://overpass-api.de/api/interpreter",
@@ -196,7 +199,8 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
   }
 
   # Fall back to broad queries if name-filtered query didn't find anything
-  if (!name_query_sufficient) {
+  # Skip broad fallback when name_only=TRUE (many-cluster mode to reduce API load)
+  if (!name_query_sufficient && !name_only) {
     message("    Querying natural=water...")
     osm_result <- query_osm_robust(bbox_vec, "natural", "water")
     if (!is.null(osm_result)) {
@@ -208,6 +212,8 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
     if (!is.null(osm_result)) {
       water_list <- c(water_list, extract_osm_polys(osm_result))
     }
+  } else if (!name_query_sufficient && name_only) {
+    message("    No results for name query, skipping broad query (name-only mode)")
   }
 
   return(water_list)
@@ -289,41 +295,122 @@ download_lake_osm <- function(sites_df) {
   } else {
     # --- Large spread: cluster-based querying ---
     clusters <- cluster_sites(sites_sf)
-    message("  Site spread is ", round(site_spread, 1),
-            " degrees - using cluster-based querying (",
-            length(clusters), " clusters)")
+    n_clusters <- length(clusters)
 
-    for (ci in seq_along(clusters)) {
-      cluster_idx <- clusters[[ci]]
-      cluster_sf <- sites_sf[cluster_idx, ]
-
-      message("  Querying OSM for cluster ", ci, "/", length(clusters),
-              " (", length(cluster_idx), " sites)...")
-
-      # Compute per-cluster bbox with adaptive buffer
-      cl_bbox <- sf::st_bbox(cluster_sf)
-      cl_spread <- max(cl_bbox["xmax"] - cl_bbox["xmin"],
-                       cl_bbox["ymax"] - cl_bbox["ymin"])
-      cl_buffer <- min(0.05, max(0.01, cl_spread * 0.1))
-      cl_bbox[1] <- cl_bbox[1] - cl_buffer
-      cl_bbox[2] <- cl_bbox[2] - cl_buffer
-      cl_bbox[3] <- cl_bbox[3] + cl_buffer
-      cl_bbox[4] <- cl_bbox[4] + cl_buffer
-
-      cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
-                       cl_bbox["xmax"], cl_bbox["ymax"])
-      names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
-
-      # Get lake names for sites in this cluster
-      cluster_lake_names <- NULL
-      if (!is.null(lake_name_col)) {
-        cluster_lake_names <- unique(cluster_sf[[lake_name_col]])
+    # When lake names are available and there are many clusters, deduplicate
+    # by querying once per unique lake name instead of once per cluster
+    use_name_only <- FALSE
+    if (!is.null(lake_name_col) && n_clusters > 20) {
+      # Build unique lake queries: one bbox per unique lake name
+      lake_queries <- list()
+      for (ci in seq_along(clusters)) {
+        cluster_sf <- sites_sf[clusters[[ci]], ]
+        names_in_cluster <- unique(cluster_sf[[lake_name_col]])
+        names_in_cluster <- names_in_cluster[!is.na(names_in_cluster) &
+                                              nchar(trimws(names_in_cluster)) > 0]
+        for (lname in names_in_cluster) {
+          if (is.null(lake_queries[[lname]])) {
+            # First time seeing this lake — use this cluster's sites for bbox
+            lake_queries[[lname]] <- clusters[[ci]]
+          } else {
+            # Merge site indices
+            lake_queries[[lname]] <- c(lake_queries[[lname]], clusters[[ci]])
+          }
+        }
       }
 
-      cluster_results <- download_lake_osm_single(cl_bbox_vec,
-                                                   cluster_lake_names,
-                                                   overpass_servers)
-      water_list <- c(water_list, cluster_results)
+      if (length(lake_queries) > 0) {
+        use_name_only <- TRUE
+        message("  Site spread is ", round(site_spread, 1),
+                " degrees - querying by lake name (",
+                length(lake_queries), " unique lakes)")
+
+        query_names <- names(lake_queries)
+        for (qi in seq_along(lake_queries)) {
+          lname <- query_names[qi]
+          query_idx <- unique(lake_queries[[lname]])
+          query_sf <- sites_sf[query_idx, ]
+
+          message("  Querying lake ", qi, "/", length(lake_queries),
+                  ": ", lname, " (", length(query_idx), " sites)...")
+
+          # Compute bbox around all sites for this lake
+          cl_bbox <- sf::st_bbox(query_sf)
+          cl_spread <- max(cl_bbox["xmax"] - cl_bbox["xmin"],
+                          cl_bbox["ymax"] - cl_bbox["ymin"])
+          cl_buffer <- min(0.05, max(0.01, max(cl_spread * 0.1, 0.005)))
+          cl_bbox[1] <- cl_bbox[1] - cl_buffer
+          cl_bbox[2] <- cl_bbox[2] - cl_buffer
+          cl_bbox[3] <- cl_bbox[3] + cl_buffer
+          cl_bbox[4] <- cl_bbox[4] + cl_buffer
+
+          cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
+                           cl_bbox["xmax"], cl_bbox["ymax"])
+          names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
+
+          cluster_results <- download_lake_osm_single(
+            cl_bbox_vec, lake_names = lname,
+            overpass_servers = overpass_servers, name_only = TRUE
+          )
+          water_list <- c(water_list, cluster_results)
+
+          # Rate limit: pause between queries to avoid Overpass blocking
+          if (qi < length(lake_queries)) {
+            Sys.sleep(2)
+          }
+        }
+      }
+    }
+
+    # Fallback: cluster-based querying without name deduplication
+    if (!use_name_only) {
+      message("  Site spread is ", round(site_spread, 1),
+              " degrees - using cluster-based querying (",
+              n_clusters, " clusters)")
+      if (n_clusters > 20) {
+        est_minutes <- round(n_clusters * 5 / 60, 0)
+        message("  NOTE: ", n_clusters, " clusters will take ~",
+                est_minutes, " minutes. Consider providing lake names ",
+                "or a local boundary file.")
+      }
+
+      for (ci in seq_along(clusters)) {
+        cluster_idx <- clusters[[ci]]
+        cluster_sf <- sites_sf[cluster_idx, ]
+
+        message("  Querying OSM for cluster ", ci, "/", n_clusters,
+                " (", length(cluster_idx), " sites)...")
+
+        # Compute per-cluster bbox with adaptive buffer
+        cl_bbox <- sf::st_bbox(cluster_sf)
+        cl_spread <- max(cl_bbox["xmax"] - cl_bbox["xmin"],
+                         cl_bbox["ymax"] - cl_bbox["ymin"])
+        cl_buffer <- min(0.05, max(0.01, cl_spread * 0.1))
+        cl_bbox[1] <- cl_bbox[1] - cl_buffer
+        cl_bbox[2] <- cl_bbox[2] - cl_buffer
+        cl_bbox[3] <- cl_bbox[3] + cl_buffer
+        cl_bbox[4] <- cl_bbox[4] + cl_buffer
+
+        cl_bbox_vec <- c(cl_bbox["xmin"], cl_bbox["ymin"],
+                         cl_bbox["xmax"], cl_bbox["ymax"])
+        names(cl_bbox_vec) <- c("left", "bottom", "right", "top")
+
+        # Get lake names for sites in this cluster
+        cluster_lake_names <- NULL
+        if (!is.null(lake_name_col)) {
+          cluster_lake_names <- unique(cluster_sf[[lake_name_col]])
+        }
+
+        cluster_results <- download_lake_osm_single(cl_bbox_vec,
+                                                     cluster_lake_names,
+                                                     overpass_servers)
+        water_list <- c(water_list, cluster_results)
+
+        # Rate limit: pause between queries to avoid Overpass blocking
+        if (ci < n_clusters) {
+          Sys.sleep(2)
+        }
+      }
     }
   }
 
