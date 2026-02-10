@@ -13,7 +13,7 @@
 #' @importFrom ggplot2 scale_fill_manual coord_sf labs theme_minimal theme
 #' @importFrom ggplot2 element_text
 #' @importFrom stats setNames ave
-#' @importFrom utils read.csv
+#' @importFrom utils read.csv txtProgressBar setTxtProgressBar
 #' @importFrom graphics par plot lines polygon text title
 #' @importFrom grDevices rgb png dev.off
 NULL

@@ -1,3 +1,16 @@
+# lakefetch 0.1.1
+
+## Improvements
+
+* **Custom column names**: `load_sites()` now accepts `lat_col`, `lon_col`, `site_col`, and `lake_col` arguments to explicitly specify column names when auto-detection doesn't match your data format.
+* **Progress bars**: Long-running fetch calculations now display progress bars in interactive sessions, so users can see that computation is proceeding. Progress is shown for site buffering, directional fetch calculation, and multi-lake sequential processing.
+* **Shiny app performance**: `fetch_app()` and `fetch_app_upload()` now use a hybrid approach for large datasets. For small datasets (<=50 sites), rose diagrams are pre-rendered in popups as before. For large datasets (>50 sites), rose diagrams and rays are generated on demand when a marker is clicked, preventing the app from freezing or crashing at startup.
+* **Marker clustering**: Shiny apps automatically cluster markers when there are more than 30 sites or when sites span a wide geographic area (>5 degrees), preventing browser slowdowns and overlapping markers.
+
+## Bug fixes
+
+* **Invalid (0,0) coordinates**: `load_sites()` now detects and removes rows where both latitude and longitude are 0, which typically indicates missing data rather than a real location.
+
 # lakefetch 0.1.0
 
 Initial CRAN release.

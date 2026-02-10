@@ -213,9 +213,20 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
     parallel::stopCluster(cl)
   } else {
     message("Using sequential processing")
-    results_list <- lapply(lakes_with_sites, function(lid) {
-      process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg, fetch_method)
-    })
+    if (interactive() && length(lakes_with_sites) > 1) {
+      pb_lakes <- utils::txtProgressBar(min = 0, max = length(lakes_with_sites), style = 3)
+      results_list <- lapply(seq_along(lakes_with_sites), function(j) {
+        result <- process_one_lake(lakes_with_sites[j], all_lakes, sites_with_lakes,
+                                   utm_epsg, fetch_method)
+        utils::setTxtProgressBar(pb_lakes, j)
+        result
+      })
+      close(pb_lakes)
+    } else {
+      results_list <- lapply(lakes_with_sites, function(lid) {
+        process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg, fetch_method)
+      })
+    }
   }
 
   message("Fetch calculation complete.")
@@ -294,6 +305,13 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
   new_geoms <- vector("list", n_sites)
   nudged_cache <- list()  # Cache nudged positions by coord_key
 
+  show_buffer_pb <- interactive() && n_unique > 5
+  if (show_buffer_pb) {
+    message("    Buffering sites inward from shore...")
+    pb_buf <- utils::txtProgressBar(min = 0, max = n_unique, style = 3)
+    pb_buf_count <- 0
+  }
+
   for (i in seq_len(n_sites)) {
     key <- coord_key[i]
     if (is.null(nudged_cache[[key]])) {
@@ -301,9 +319,15 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
       nudged_cache[[key]] <- nudge_inward(sf::st_geometry(sites)[i],
                                            lake_boundary,
                                            lake_polygon)
+      if (show_buffer_pb) {
+        pb_buf_count <- pb_buf_count + 1
+        utils::setTxtProgressBar(pb_buf, pb_buf_count)
+      }
     }
     new_geoms[[i]] <- nudged_cache[[key]]
   }
+
+  if (show_buffer_pb) close(pb_buf)
 
   sf::st_geometry(sites_buffered) <- sf::st_sfc(new_geoms, crs = utm_epsg)
 
@@ -314,6 +338,13 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
   fetch_cache <- list()  # Cache fetch results by coord_key
   fetch_list <- vector("list", n_sites)
 
+  show_fetch_pb <- interactive() && n_unique > 1
+  if (show_fetch_pb) {
+    message("    Calculating directional fetch for ", n_unique, " unique locations...")
+    pb_fetch <- utils::txtProgressBar(min = 0, max = n_unique, style = 3)
+    pb_fetch_count <- 0
+  }
+
   for (i in seq_len(n_sites)) {
     key <- coord_key[i]
     if (is.null(fetch_cache[[key]])) {
@@ -322,9 +353,15 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
                                                lake_boundary,
                                                lake_polygon,
                                                angles)
+      if (show_fetch_pb) {
+        pb_fetch_count <- pb_fetch_count + 1
+        utils::setTxtProgressBar(pb_fetch, pb_fetch_count)
+      }
     }
     fetch_list[[i]] <- fetch_cache[[key]]
   }
+
+  if (show_fetch_pb) close(pb_fetch)
 
   # Convert to data frame
   fetch_matrix <- do.call(rbind, fetch_list)

@@ -46,18 +46,6 @@ fetch_app <- function(fetch_data, title = NULL) {
          "Install with: install.packages('leaflet')")
   }
 
-  # Generate rose plots for popups
-  message("Generating rose diagrams...")
-  rose_plots <- vector("list", nrow(fetch_data$results))
-  for (i in seq_len(nrow(fetch_data$results))) {
-    rose_plots[[i]] <- make_rose_plot_base64(fetch_data$results[i, ],
-                                              fetch_data$results$Site[i])
-  }
-  fetch_data$results$rose_plot <- unlist(rose_plots)
-
-  # Create ray geometries
-  all_rays_sf <- create_ray_geometries(fetch_data)
-
   # Determine app title
   if (is.null(title)) {
     unique_lakes <- unique(fetch_data$results$lake_name)
@@ -72,6 +60,26 @@ fetch_app <- function(fetch_data, title = NULL) {
   # Store lake data for click analysis
   lakes_utm <- fetch_data$lakes
   utm_epsg <- sf::st_crs(lakes_utm)$epsg
+  n_sites <- nrow(fetch_data$results)
+  # Cluster markers when many sites or when sites span a wide geographic area
+  # (e.g., sites on lakes across multiple states/countries)
+  results_bbox <- sf::st_bbox(sf::st_transform(fetch_data$results, 4326))
+  geo_span <- max(results_bbox["xmax"] - results_bbox["xmin"],
+                  results_bbox["ymax"] - results_bbox["ymin"])
+  use_clustering <- n_sites > 30 || geo_span > 5  # >5 degrees ~ multiple regions
+  # For small datasets, pre-render rose plots in popups for best UX
+  # For large datasets (>50 sites), generate on demand to avoid long startup
+  prerender_roses <- n_sites <= 50
+
+  if (prerender_roses) {
+    message("Generating rose diagrams...")
+    rose_plots <- vector("list", n_sites)
+    for (i in seq_len(n_sites)) {
+      rose_plots[[i]] <- make_rose_plot_base64(fetch_data$results[i, ],
+                                                fetch_data$results$Site[i])
+    }
+    fetch_data$results$rose_plot <- unlist(rose_plots)
+  }
 
   # UI
   ui <- shiny::fluidPage(
@@ -80,11 +88,12 @@ fetch_app <- function(fetch_data, title = NULL) {
       shiny::sidebarPanel(
         width = 3,
         shiny::h4("Instructions"),
-        shiny::p("Click any site marker to view fetch rays."),
+        shiny::p("Click any site marker to view fetch rays and rose diagram."),
         shiny::p(shiny::strong("Click anywhere on a lake"), " to analyze a new point."),
         shiny::hr(),
         shiny::h5("Selected Site:"),
         shiny::textOutput("selected_site"),
+        shiny::uiOutput("site_details"),
         shiny::uiOutput("click_results"),
         shiny::hr(),
         shiny::h5("Color Legend:"),
@@ -121,62 +130,89 @@ fetch_app <- function(fetch_data, title = NULL) {
       results_wgs <- sf::st_transform(fetch_data$results, 4326)
       lakes_wgs <- sf::st_transform(fetch_data$lakes, 4326)
 
-      # Build outlet/inlet info strings
-      outlet_info <- ifelse(
-        !is.na(results_wgs$outlet_dist_m),
-        sprintf("<b>Outlet:</b> %.0f m %s<br/>",
-                results_wgs$outlet_dist_m,
-                ifelse(is.na(results_wgs$outlet_bearing), "", results_wgs$outlet_bearing)),
-        ""
-      )
-      inlet_info <- ifelse(
-        !is.na(results_wgs$inlet_nearest_dist_m),
-        sprintf("<b>Nearest Inlet:</b> %.0f m %s<br/>",
-                results_wgs$inlet_nearest_dist_m,
-                ifelse(is.na(results_wgs$inlet_nearest_bearing), "", results_wgs$inlet_nearest_bearing)),
-        ""
-      )
+      # Build popups - rich with rose plots for small datasets, text-only for large
+      if (prerender_roses) {
+        # Build outlet/inlet info strings
+        outlet_info <- if ("outlet_dist_m" %in% names(results_wgs)) {
+          ifelse(!is.na(results_wgs$outlet_dist_m),
+                 sprintf("<b>Outlet:</b> %.0f m<br/>", results_wgs$outlet_dist_m), "")
+        } else { rep("", nrow(results_wgs)) }
+        inlet_info <- if ("inlet_nearest_dist_m" %in% names(results_wgs)) {
+          ifelse(!is.na(results_wgs$inlet_nearest_dist_m),
+                 sprintf("<b>Nearest Inlet:</b> %.0f m<br/>", results_wgs$inlet_nearest_dist_m), "")
+        } else { rep("", nrow(results_wgs)) }
 
-      popup_html <- sprintf(
-        "<div style='font-family:sans-serif; width:220px;'>
-         <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
-         <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
-         <span style='color:#666; font-size:0.8em;'>%s</span>
-         <center><img src='%s' width='100%%' style='margin:5px 0;'/></center>
-         <b>Effective Fetch:</b> %.1f km<br/>
-         <b>Orbital Velocity:</b> %.3f m/s<br/>
-         %s%s
-         </div>",
-        results_wgs$Site,
-        results_wgs$exposure_category,
-        ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
-        results_wgs$rose_plot,
-        results_wgs$fetch_effective / 1000,
-        results_wgs$orbital_effective,
-        outlet_info,
-        inlet_info
-      )
+        popup_html <- sprintf(
+          "<div style='font-family:sans-serif; width:220px;'>
+           <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
+           <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
+           <span style='color:#666; font-size:0.8em;'>%s</span>
+           <center><img src='%s' width='100%%' style='margin:5px 0;'/></center>
+           <b>Effective Fetch:</b> %.1f km<br/>
+           <b>Orbital Velocity:</b> %.3f m/s<br/>
+           %s%s
+           </div>",
+          results_wgs$Site,
+          results_wgs$exposure_category,
+          ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
+          results_wgs$rose_plot,
+          results_wgs$fetch_effective / 1000,
+          results_wgs$orbital_effective,
+          outlet_info,
+          inlet_info
+        )
+      } else {
+        popup_html <- sprintf(
+          "<div style='font-family:sans-serif; width:200px;'>
+           <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
+           <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
+           <span style='color:#666; font-size:0.8em;'>%s</span><br/>
+           <b>Effective Fetch:</b> %.1f km<br/>
+           <b>Orbital Velocity:</b> %.3f m/s<br/>
+           <em style='font-size:0.8em;'>Click marker for details in sidebar</em>
+           </div>",
+          results_wgs$Site,
+          results_wgs$exposure_category,
+          ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
+          results_wgs$fetch_effective / 1000,
+          results_wgs$orbital_effective
+        )
+      }
 
-      leaflet::leaflet(results_wgs) |>
+      m <- leaflet::leaflet(results_wgs) |>
         leaflet::addProviderTiles("Esri.WorldImagery") |>
         leaflet::addPolygons(data = lakes_wgs,
                     fill = FALSE, color = "white",
-                    weight = 1, opacity = 0.3) |>
-        leaflet::addCircleMarkers(
+                    weight = 1, opacity = 0.3)
+
+      if (use_clustering) {
+        m <- m |> leaflet::addCircleMarkers(
+          radius = 6,
+          stroke = TRUE, color = "white", weight = 1.5,
+          fillOpacity = 0.9,
+          fillColor = ~exposure_pal(exposure_category),
+          popup = popup_html,
+          layerId = ~Site,
+          clusterOptions = leaflet::markerClusterOptions()
+        )
+      } else {
+        m <- m |> leaflet::addCircleMarkers(
           radius = 6,
           stroke = TRUE, color = "white", weight = 1.5,
           fillOpacity = 0.9,
           fillColor = ~exposure_pal(exposure_category),
           popup = popup_html,
           layerId = ~Site
-        ) |>
-        leaflet::addLegend("bottomright",
-                  pal = exposure_pal,
-                  values = ~exposure_category,
-                  title = "Wave Exposure")
+        )
+      }
+
+      m |> leaflet::addLegend("bottomright",
+                pal = exposure_pal,
+                values = ~exposure_category,
+                title = "Wave Exposure")
     })
 
-    # Click handler for existing markers
+    # Click handler for existing markers - generate rays and rose on demand
     shiny::observeEvent(input$map_marker_click, {
       click <- input$map_marker_click
       site_id <- click$id
@@ -185,21 +221,89 @@ fetch_app <- function(fetch_data, title = NULL) {
 
       output$selected_site <- shiny::renderText(site_id)
 
-      # Filter rays
-      site_rays <- all_rays_sf[all_rays_sf$Site == site_id, ]
-      site_rays_wgs <- sf::st_transform(site_rays, 4326)
+      # Find this site in results
+      site_idx <- which(fetch_data$results$Site == site_id)
+      if (length(site_idx) == 0) return()
 
-      # Update map
-      leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("rays") |>
-        leaflet::addPolylines(
-          data = site_rays_wgs,
-          group = "rays",
-          color = ~ray_pal(Distance),
-          weight = 2,
-          opacity = 0.8,
-          popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
+      site_row <- fetch_data$results[site_idx[1], ]
+
+      # Generate ray geometries on demand for this site only
+      angles <- fetch_data$angles
+      coords <- sf::st_coordinates(site_row)
+      x0 <- coords[1]
+      y0 <- coords[2]
+
+      ray_lines <- list()
+      ray_angles <- integer(0)
+      ray_dists <- numeric(0)
+
+      for (angle in angles) {
+        col_name <- paste0("fetch_", angle)
+        if (!col_name %in% names(site_row)) next
+        dist <- as.numeric(sf::st_drop_geometry(site_row)[, col_name])
+        if (is.na(dist) || dist <= 0) next
+
+        rad <- angle * (pi / 180)
+        x1 <- x0 + dist * sin(rad)
+        y1 <- y0 + dist * cos(rad)
+
+        ray_lines[[length(ray_lines) + 1]] <- sf::st_linestring(rbind(c(x0, y0), c(x1, y1)))
+        ray_angles <- c(ray_angles, angle)
+        ray_dists <- c(ray_dists, dist)
+      }
+
+      if (length(ray_lines) > 0) {
+        site_rays <- sf::st_sf(
+          Angle = ray_angles,
+          Distance = ray_dists,
+          geometry = sf::st_sfc(ray_lines, crs = sf::st_crs(fetch_data$results))
         )
+        site_rays_wgs <- sf::st_transform(site_rays, 4326)
+
+        leaflet::leafletProxy("map") |>
+          leaflet::clearGroup("rays") |>
+          leaflet::addPolylines(
+            data = site_rays_wgs,
+            group = "rays",
+            color = ~ray_pal(Distance),
+            weight = 2,
+            opacity = 0.8,
+            popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
+          )
+      }
+
+      # Generate rose plot on demand for sidebar
+      output$site_details <- shiny::renderUI({
+        rose_b64 <- make_rose_plot_base64(site_row, site_id)
+
+        lake_nm <- if (!is.na(site_row$lake_name)) site_row$lake_name else ""
+        outlet_text <- if ("outlet_dist_m" %in% names(site_row) && !is.na(site_row$outlet_dist_m)) {
+          sprintf("Outlet: %.0f m", site_row$outlet_dist_m)
+        } else { NULL }
+        inlet_text <- if ("inlet_nearest_dist_m" %in% names(site_row) && !is.na(site_row$inlet_nearest_dist_m)) {
+          sprintf("Nearest Inlet: %.0f m", site_row$inlet_nearest_dist_m)
+        } else { NULL }
+
+        shiny::tagList(
+          if (nzchar(rose_b64)) shiny::tags$img(src = rose_b64, width = "100%"),
+          shiny::p(shiny::strong("Lake: "), lake_nm),
+          shiny::p(shiny::strong("Effective Fetch: "), sprintf("%.1f km", site_row$fetch_effective / 1000)),
+          shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", site_row$fetch_mean)),
+          shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", site_row$fetch_max)),
+          shiny::p(shiny::strong("Orbital Velocity: "), sprintf("%.3f m/s", site_row$orbital_effective)),
+          shiny::p(shiny::strong("Exposure: "),
+            shiny::span(site_row$exposure_category, style = sprintf("color: %s; font-weight: bold;",
+              switch(as.character(site_row$exposure_category),
+                "Exposed" = "firebrick",
+                "Moderate" = "goldenrod",
+                "Sheltered" = "forestgreen"
+              )
+            ))
+          ),
+          if (!is.null(outlet_text)) shiny::p(shiny::strong(outlet_text)),
+          if (!is.null(inlet_text)) shiny::p(shiny::strong(inlet_text))
+        )
+      })
     })
 
     # Store click analysis results
@@ -363,7 +467,7 @@ fetch_app <- function(fetch_data, title = NULL) {
 
       shiny::tagList(
         shiny::hr(),
-        shiny::h5("Analysis Results:"),
+        shiny::h5("Custom Point Results:"),
         shiny::p(shiny::strong("Lake: "), res$lake_name),
         shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", res$fetch_mean)),
         shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", res$fetch_max)),
@@ -385,6 +489,7 @@ fetch_app <- function(fetch_data, title = NULL) {
     shiny::observeEvent(input$clear_click, {
       click_result(NULL)
       output$selected_site <- shiny::renderText("")
+      output$site_details <- shiny::renderUI(NULL)
       leaflet::leafletProxy("map") |>
         leaflet::clearGroup("rays") |>
         leaflet::clearGroup("custom_point")
@@ -539,7 +644,6 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       sites = NULL,
       lake_data = NULL,
       fetch_data = NULL,
-      all_rays_sf = NULL,
       click_result = NULL,
       status = NULL,
       error = NULL,
@@ -630,19 +734,19 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
             shiny::incProgress(0.25)
           }
 
-          # Step 4: Generate rose plots
-          shiny::incProgress(0.25, detail = "Generating visualizations...")
-          rose_plots <- vector("list", nrow(rv$fetch_data$results))
-          for (i in seq_len(nrow(rv$fetch_data$results))) {
-            rose_plots[[i]] <- make_rose_plot_base64(
-              rv$fetch_data$results[i, ],
-              rv$fetch_data$results$Site[i]
-            )
+          # For small datasets, pre-render rose plots for rich popups
+          n_result_sites <- nrow(rv$fetch_data$results)
+          if (n_result_sites <= 50) {
+            shiny::incProgress(0.25, detail = "Generating rose diagrams...")
+            rose_plots <- vector("list", n_result_sites)
+            for (i in seq_len(n_result_sites)) {
+              rose_plots[[i]] <- make_rose_plot_base64(
+                rv$fetch_data$results[i, ],
+                rv$fetch_data$results$Site[i]
+              )
+            }
+            rv$fetch_data$results$rose_plot <- unlist(rose_plots)
           }
-          rv$fetch_data$results$rose_plot <- unlist(rose_plots)
-
-          # Step 5: Create ray geometries
-          rv$all_rays_sf <- create_ray_geometries(rv$fetch_data)
 
           shiny::incProgress(0.1, detail = "Done!")
           rv$status <- if (rv$has_weather) "Analysis complete with weather data!" else "Analysis complete!"
@@ -686,67 +790,105 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
       results_wgs <- sf::st_transform(rv$fetch_data$results, 4326)
       lakes_wgs <- sf::st_transform(rv$fetch_data$lakes, 4326)
+      n_sites <- nrow(results_wgs)
+      has_roses <- "rose_plot" %in% names(results_wgs)
 
-      # Build weather info string if available
-      weather_info <- ""
-      if (rv$has_weather && "wind_mean_24h" %in% names(results_wgs)) {
-        weather_info <- sprintf(
-          "<hr style='margin:5px 0;'/>
-           <b>Weather (24h/3d):</b><br/>
-           Wind: %.1f / %.1f m/s<br/>
-           Wave Energy: %.0f / %.0f<br/>
-           Temp: %.1f C | Precip: %.1f mm",
-          ifelse(is.na(results_wgs$wind_mean_24h), 0, results_wgs$wind_mean_24h),
-          ifelse(is.na(results_wgs$wind_mean_3d), 0, results_wgs$wind_mean_3d),
-          ifelse(is.na(results_wgs$wave_energy_24h), 0, results_wgs$wave_energy_24h),
-          ifelse(is.na(results_wgs$wave_energy_3d), 0, results_wgs$wave_energy_3d),
-          ifelse(is.na(results_wgs$temp_mean_24h), 0, results_wgs$temp_mean_24h),
-          ifelse(is.na(results_wgs$precip_total_3d), 0, results_wgs$precip_total_3d)
+      # Rich popups with rose plots for small datasets, text-only for large
+      if (has_roses) {
+        weather_info <- ""
+        if (rv$has_weather && "wind_mean_24h" %in% names(results_wgs)) {
+          weather_info <- sprintf(
+            "<hr style='margin:5px 0;'/>
+             <b>Weather (24h/3d):</b><br/>
+             Wind: %.1f / %.1f m/s<br/>
+             Wave Energy: %.0f / %.0f<br/>
+             Temp: %.1f C | Precip: %.1f mm",
+            ifelse(is.na(results_wgs$wind_mean_24h), 0, results_wgs$wind_mean_24h),
+            ifelse(is.na(results_wgs$wind_mean_3d), 0, results_wgs$wind_mean_3d),
+            ifelse(is.na(results_wgs$wave_energy_24h), 0, results_wgs$wave_energy_24h),
+            ifelse(is.na(results_wgs$wave_energy_3d), 0, results_wgs$wave_energy_3d),
+            ifelse(is.na(results_wgs$temp_mean_24h), 0, results_wgs$temp_mean_24h),
+            ifelse(is.na(results_wgs$precip_total_3d), 0, results_wgs$precip_total_3d)
+          )
+        }
+        popup_html <- sprintf(
+          "<div style='font-family:sans-serif; width:220px;'>
+           <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
+           <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
+           <span style='color:#666; font-size:0.8em;'>%s</span>
+           <center><img src='%s' width='100%%' style='margin:5px 0;'/></center>
+           <b>Effective Fetch:</b> %.1f km<br/>
+           <b>Orbital Velocity:</b> %.3f m/s<br/>
+           %s
+           </div>",
+          results_wgs$Site,
+          results_wgs$exposure_category,
+          ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
+          results_wgs$rose_plot,
+          results_wgs$fetch_effective / 1000,
+          results_wgs$orbital_effective,
+          weather_info
+        )
+      } else {
+        popup_html <- sprintf(
+          "<div style='font-family:sans-serif; width:200px;'>
+           <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
+           <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
+           <span style='color:#666; font-size:0.8em;'>%s</span><br/>
+           <b>Effective Fetch:</b> %.1f km<br/>
+           <b>Orbital Velocity:</b> %.3f m/s<br/>
+           <em style='font-size:0.8em;'>Click marker for details in sidebar</em>
+           </div>",
+          results_wgs$Site,
+          results_wgs$exposure_category,
+          ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
+          results_wgs$fetch_effective / 1000,
+          results_wgs$orbital_effective
         )
       }
 
-      # Build popup HTML
-      popup_html <- sprintf(
-        "<div style='font-family:sans-serif; width:220px;'>
-         <h4 style='margin:0; border-bottom:1px solid #ccc;'>%s</h4>
-         <span style='background:#eee; font-size:0.9em;'>%s</span><br/>
-         <span style='color:#666; font-size:0.8em;'>%s</span>
-         <center><img src='%s' width='100%%' style='margin:5px 0;'/></center>
-         <b>Effective Fetch:</b> %.1f km<br/>
-         <b>Orbital Velocity:</b> %.3f m/s<br/>
-         %s
-         </div>",
-        results_wgs$Site,
-        results_wgs$exposure_category,
-        ifelse(is.na(results_wgs$lake_name), "", results_wgs$lake_name),
-        results_wgs$rose_plot,
-        results_wgs$fetch_effective / 1000,
-        results_wgs$orbital_effective,
-        weather_info
-      )
-
-      leaflet::leaflet(results_wgs) |>
+      m <- leaflet::leaflet(results_wgs) |>
         leaflet::addProviderTiles("Esri.WorldImagery") |>
         leaflet::addPolygons(data = lakes_wgs,
                     fill = FALSE, color = "white",
-                    weight = 1, opacity = 0.3) |>
-        leaflet::addCircleMarkers(
+                    weight = 1, opacity = 0.3)
+
+      # Cluster markers when many sites or wide geographic spread
+      bbox_wgs <- sf::st_bbox(results_wgs)
+      geo_span_upload <- max(bbox_wgs["xmax"] - bbox_wgs["xmin"],
+                             bbox_wgs["ymax"] - bbox_wgs["ymin"])
+      use_cluster <- n_sites > 30 || geo_span_upload > 5
+
+      if (use_cluster) {
+        m <- m |> leaflet::addCircleMarkers(
+          radius = 6,
+          stroke = TRUE, color = "white", weight = 1.5,
+          fillOpacity = 0.9,
+          fillColor = ~exposure_pal(exposure_category),
+          popup = popup_html,
+          layerId = ~Site,
+          clusterOptions = leaflet::markerClusterOptions()
+        )
+      } else {
+        m <- m |> leaflet::addCircleMarkers(
           radius = 6,
           stroke = TRUE, color = "white", weight = 1.5,
           fillOpacity = 0.9,
           fillColor = ~exposure_pal(exposure_category),
           popup = popup_html,
           layerId = ~Site
-        ) |>
-        leaflet::addLegend("bottomright",
-                  pal = exposure_pal,
-                  values = ~exposure_category,
-                  title = "Wave Exposure")
+        )
+      }
+
+      m |> leaflet::addLegend("bottomright",
+                pal = exposure_pal,
+                values = ~exposure_category,
+                title = "Wave Exposure")
     })
 
-    # Click handler for existing markers
+    # Click handler for existing markers - generate rays and rose on demand
     shiny::observeEvent(input$map_marker_click, {
-      req(rv$all_rays_sf)
+      req(rv$fetch_data)
       click <- input$map_marker_click
       site_id <- click$id
 
@@ -754,19 +896,95 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
       output$selected_site <- shiny::renderText(site_id)
 
-      site_rays <- rv$all_rays_sf[rv$all_rays_sf$Site == site_id, ]
-      site_rays_wgs <- sf::st_transform(site_rays, 4326)
+      # Find this site in results
+      site_idx <- which(rv$fetch_data$results$Site == site_id)
+      if (length(site_idx) == 0) return()
 
-      leaflet::leafletProxy("map") |>
-        leaflet::clearGroup("rays") |>
-        leaflet::addPolylines(
-          data = site_rays_wgs,
-          group = "rays",
-          color = ~ray_pal(Distance),
-          weight = 2,
-          opacity = 0.8,
-          popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
+      site_row <- rv$fetch_data$results[site_idx[1], ]
+      angles <- rv$fetch_data$angles
+
+      # Generate ray geometries on demand for this site only
+      coords <- sf::st_coordinates(site_row)
+      x0 <- coords[1]
+      y0 <- coords[2]
+
+      ray_lines <- list()
+      ray_angles <- integer(0)
+      ray_dists <- numeric(0)
+
+      for (angle in angles) {
+        col_name <- paste0("fetch_", angle)
+        if (!col_name %in% names(site_row)) next
+        dist <- as.numeric(sf::st_drop_geometry(site_row)[, col_name])
+        if (is.na(dist) || dist <= 0) next
+
+        rad <- angle * (pi / 180)
+        x1 <- x0 + dist * sin(rad)
+        y1 <- y0 + dist * cos(rad)
+
+        ray_lines[[length(ray_lines) + 1]] <- sf::st_linestring(rbind(c(x0, y0), c(x1, y1)))
+        ray_angles <- c(ray_angles, angle)
+        ray_dists <- c(ray_dists, dist)
+      }
+
+      if (length(ray_lines) > 0) {
+        site_rays <- sf::st_sf(
+          Angle = ray_angles,
+          Distance = ray_dists,
+          geometry = sf::st_sfc(ray_lines, crs = sf::st_crs(rv$fetch_data$results))
         )
+        site_rays_wgs <- sf::st_transform(site_rays, 4326)
+
+        leaflet::leafletProxy("map") |>
+          leaflet::clearGroup("rays") |>
+          leaflet::addPolylines(
+            data = site_rays_wgs,
+            group = "rays",
+            color = ~ray_pal(Distance),
+            weight = 2,
+            opacity = 0.8,
+            popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
+          )
+      }
+
+      # Generate rose plot on demand for sidebar
+      output$click_results <- shiny::renderUI({
+        rose_b64 <- make_rose_plot_base64(site_row, site_id)
+
+        lake_nm <- if (!is.na(site_row$lake_name)) site_row$lake_name else ""
+
+        # Build weather info if available
+        weather_tags <- NULL
+        if (rv$has_weather && "wind_mean_24h" %in% names(site_row)) {
+          weather_tags <- shiny::tagList(
+            shiny::hr(),
+            shiny::h5("Weather Context:"),
+            shiny::p(shiny::strong("Wind (24h): "),
+              sprintf("%.1f m/s", ifelse(is.na(site_row$wind_mean_24h), 0, site_row$wind_mean_24h))),
+            shiny::p(shiny::strong("Wave Energy (24h): "),
+              sprintf("%.0f", ifelse(is.na(site_row$wave_energy_24h), 0, site_row$wave_energy_24h)))
+          )
+        }
+
+        shiny::tagList(
+          if (nzchar(rose_b64)) shiny::tags$img(src = rose_b64, width = "100%"),
+          shiny::p(shiny::strong("Lake: "), lake_nm),
+          shiny::p(shiny::strong("Effective Fetch: "), sprintf("%.1f km", site_row$fetch_effective / 1000)),
+          shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", site_row$fetch_mean)),
+          shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", site_row$fetch_max)),
+          shiny::p(shiny::strong("Orbital Velocity: "), sprintf("%.3f m/s", site_row$orbital_effective)),
+          shiny::p(shiny::strong("Exposure: "),
+            shiny::span(site_row$exposure_category, style = sprintf("color: %s; font-weight: bold;",
+              switch(as.character(site_row$exposure_category),
+                "Exposed" = "firebrick",
+                "Moderate" = "goldenrod",
+                "Sheltered" = "forestgreen"
+              )
+            ))
+          ),
+          weather_tags
+        )
+      })
     })
 
     # Click handler for map (new point analysis)
@@ -935,7 +1153,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
         output_df <- sf::st_drop_geometry(results_wgs)
         output_df$longitude <- coords[, 1]
         output_df$latitude <- coords[, 2]
-        # Remove rose_plot column (base64 data)
+        # Remove internal columns not useful for export
         output_df$rose_plot <- NULL
         utils::write.csv(output_df, file, row.names = FALSE)
       }
@@ -968,7 +1186,6 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       rv$sites <- NULL
       rv$lake_data <- NULL
       rv$fetch_data <- NULL
-      rv$all_rays_sf <- NULL
       rv$click_result <- NULL
       rv$status <- NULL
       rv$error <- NULL

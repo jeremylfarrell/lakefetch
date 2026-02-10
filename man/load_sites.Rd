@@ -4,10 +4,22 @@
 \alias{load_sites}
 \title{Load Sites from CSV or Data Frame}
 \usage{
-load_sites(x)
+load_sites(x, lat_col = NULL, lon_col = NULL, site_col = NULL, lake_col = NULL)
 }
 \arguments{
 \item{x}{Either a file path to a CSV file or a data.frame with site data.}
+
+\item{lat_col}{Optional character string specifying the name of the latitude
+column. If NULL (default), auto-detects columns starting with "lat".}
+
+\item{lon_col}{Optional character string specifying the name of the longitude
+column. If NULL (default), auto-detects columns starting with "lon".}
+
+\item{site_col}{Optional character string specifying the name of the site
+identifier column. If NULL (default), auto-detects a column named "site".}
+
+\item{lake_col}{Optional character string specifying the name of the lake
+name column. If NULL (default), auto-detects common lake name patterns.}
 }
 \value{
 A data.frame with columns Site, latitude, longitude, and any
@@ -27,6 +39,11 @@ The function:
 \item Removes rows with invalid or missing coordinates
 \item Detects location name from data columns or filename
 }
+
+Column names can be specified explicitly using the \code{lat_col},
+\code{lon_col}, \code{site_col}, and \code{lake_col} arguments. This is
+useful when your data uses non-standard column names that the auto-detection
+cannot find.
 }
 \examples{
 \dontrun{
@@ -40,6 +57,16 @@ df <- data.frame(
   longitude = c(-73.69, -73.68, -73.70)
 )
 sites <- load_sites(df)
+
+# Load with custom column names
+df2 <- data.frame(
+  sample_id = c("A", "B"),
+  y_coord = c(43.42, 43.43),
+  x_coord = c(-73.69, -73.68),
+  reservoir = c("Lake One", "Lake One")
+)
+sites <- load_sites(df2, lat_col = "y_coord", lon_col = "x_coord",
+                    site_col = "sample_id", lake_col = "reservoir")
 }
 
 }

@@ -76,6 +76,17 @@ test_that("load_sites removes invalid coordinates", {
   expect_equal(nrow(result), 1)
 })
 
+test_that("load_sites removes (0, 0) coordinates", {
+  df <- data.frame(
+    Site = c("A", "B", "C"),
+    latitude = c(43.0, 0, 43.1),
+    longitude = c(-74.0, 0, -74.1)
+  )
+
+  expect_warning(result <- load_sites(df), "0, 0")
+  expect_equal(nrow(result), 2)
+})
+
 test_that("load_sites preserves datetime column", {
   df <- data.frame(
     Site = c("A", "B"),
@@ -132,6 +143,66 @@ test_that("load_sites errors on missing coordinate columns", {
   )
 
   expect_error(load_sites(df))
+})
+
+test_that("load_sites accepts custom lat/lon column names", {
+  df <- data.frame(
+    sample_id = c("A", "B"),
+    y_coord = c(43.0, 43.1),
+    x_coord = c(-74.0, -74.1)
+  )
+  result <- load_sites(df, lat_col = "y_coord", lon_col = "x_coord")
+  expect_equal(nrow(result), 2)
+  expect_true("latitude" %in% names(result))
+  expect_true("longitude" %in% names(result))
+  expect_equal(result$latitude[1], 43.0)
+  expect_equal(result$longitude[1], -74.0)
+})
+
+test_that("load_sites accepts custom site column name", {
+  df <- data.frame(
+    sample_location = c("Alpha", "Beta"),
+    latitude = c(43.0, 43.1),
+    longitude = c(-74.0, -74.1)
+  )
+  result <- load_sites(df, site_col = "sample_location")
+  expect_true(all(grepl("Alpha|Beta", result$site_name)))
+})
+
+test_that("load_sites accepts custom lake column name", {
+  df <- data.frame(
+    Site = c("A", "B"),
+    latitude = c(43.0, 43.1),
+    longitude = c(-74.0, -74.1),
+    reservoir = c("Lake One", "Lake Two")
+  )
+  result <- load_sites(df, lake_col = "reservoir")
+  expect_true("lake.name" %in% names(result))
+  expect_equal(result$lake.name, c("Lake One", "Lake Two"))
+})
+
+test_that("load_sites errors on invalid custom column names", {
+  df <- data.frame(
+    Site = c("A", "B"),
+    latitude = c(43.0, 43.1),
+    longitude = c(-74.0, -74.1)
+  )
+  expect_error(load_sites(df, lat_col = "nonexistent"), "not found")
+  expect_error(load_sites(df, lon_col = "nonexistent"), "not found")
+  expect_error(load_sites(df, site_col = "nonexistent"), "not found")
+  expect_error(load_sites(df, lake_col = "nonexistent"), "not found")
+})
+
+test_that("load_sites custom columns override auto-detection", {
+  df <- data.frame(
+    latitude = c(0, 0),
+    longitude = c(0, 0),
+    y_coord = c(43.0, 43.1),
+    x_coord = c(-74.0, -74.1)
+  )
+  result <- load_sites(df, lat_col = "y_coord", lon_col = "x_coord")
+  expect_equal(result$latitude[1], 43.0)
+  expect_equal(result$longitude[1], -74.0)
 })
 
 test_that("sanitize_filename removes special characters", {

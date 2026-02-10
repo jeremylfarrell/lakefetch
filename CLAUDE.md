@@ -12,7 +12,17 @@ Last updated: 2026-02-01
 
 All checks pass locally (0 errors, 0 warnings, 1 note). Waiting on feedback from Lucas and Fenly before re-running win-builder/R-hub and submitting to CRAN.
 
-### Recent Changes (2026-02-03)
+### Recent Changes (2026-02-09, v0.1.1)
+
+1. **Custom column names** (`R/data_loading.R`): `load_sites()` now accepts `lat_col`, `lon_col`, `site_col`, `lake_col` arguments to explicitly specify column names. Useful for datasets like the GLEON Info_Data.csv where the lake name column is just "name".
+
+2. **Progress bars** (`R/fetch_core.R`): Added `txtProgressBar` to fetch calculation and site buffering loops. Only shown in interactive sessions. No new dependencies (uses base R `utils`).
+
+3. **Shiny app performance** (`R/shiny_app.R`): Rose plots and ray geometries are now generated on demand (on marker click) instead of pre-rendered for all sites at startup. Marker clustering enabled for >30 sites. This fixes the crash when using `fetch_app()` with large datasets like the GLEON 433-site dataset.
+
+4. **Invalid coordinate filtering** (`R/data_loading.R`): Added (0,0) coordinate detection and removal with warning.
+
+### Previous Changes (2026-02-03)
 
 1. **Fixed name-based lake matching** (`R/lake_sources.R`, Pass 3 of `assign_sites_to_lakes()`): Added a distance check (`tolerance_m * 5`, default 500m) so sites aren't silently assigned to a same-named lake far away. Sites that fail the proximity check are skipped with a warning. This fixes the Raquette Lake mismatch bug reported by colleague testing with Adirondack sites.
 

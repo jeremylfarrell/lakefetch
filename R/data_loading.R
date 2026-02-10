@@ -8,6 +8,14 @@
 #' coordinate columns (latitude/longitude) and cleans the data.
 #'
 #' @param x Either a file path to a CSV file or a data.frame with site data.
+#' @param lat_col Optional character string specifying the name of the latitude
+#'   column. If NULL (default), auto-detects columns starting with "lat".
+#' @param lon_col Optional character string specifying the name of the longitude
+#'   column. If NULL (default), auto-detects columns starting with "lon".
+#' @param site_col Optional character string specifying the name of the site
+#'   identifier column. If NULL (default), auto-detects a column named "site".
+#' @param lake_col Optional character string specifying the name of the lake
+#'   name column. If NULL (default), auto-detects common lake name patterns.
 #'
 #' @return A data.frame with columns Site, latitude, longitude, and any
 #'   additional columns from the input. Includes attributes "location_name"
@@ -23,6 +31,11 @@
 #'   \item Detects location name from data columns or filename
 #' }
 #'
+#' Column names can be specified explicitly using the \code{lat_col},
+#' \code{lon_col}, \code{site_col}, and \code{lake_col} arguments. This is
+#' useful when your data uses non-standard column names that the auto-detection
+#' cannot find.
+#'
 #' @examples
 #' \dontrun{
 #' # Load from CSV
@@ -35,10 +48,21 @@
 #'   longitude = c(-73.69, -73.68, -73.70)
 #' )
 #' sites <- load_sites(df)
+#'
+#' # Load with custom column names
+#' df2 <- data.frame(
+#'   sample_id = c("A", "B"),
+#'   y_coord = c(43.42, 43.43),
+#'   x_coord = c(-73.69, -73.68),
+#'   reservoir = c("Lake One", "Lake One")
+#' )
+#' sites <- load_sites(df2, lat_col = "y_coord", lon_col = "x_coord",
+#'                     site_col = "sample_id", lake_col = "reservoir")
 #' }
 #'
 #' @export
-load_sites <- function(x) {
+load_sites <- function(x, lat_col = NULL, lon_col = NULL,
+                       site_col = NULL, lake_col = NULL) {
 
   if (is.character(x)) {
     # Load from file
@@ -68,14 +92,33 @@ load_sites <- function(x) {
   message("  Loaded ", nrow(sites_raw), " rows with columns: ",
           paste(names(sites_raw), collapse = ", "))
 
-  # Find coordinate columns (flexible naming)
+  # Find coordinate columns (user-specified or auto-detect)
   col_names_lower <- tolower(names(sites_raw))
-  lat_col_idx <- grep("^lat", col_names_lower)[1]
-  lon_col_idx <- grep("^lon", col_names_lower)[1]
+
+  if (!is.null(lat_col)) {
+    if (!lat_col %in% names(sites_raw)) {
+      stop("Specified lat_col '", lat_col, "' not found in data.\n",
+           "Available columns: ", paste(names(sites_raw), collapse = ", "))
+    }
+    lat_col_idx <- which(names(sites_raw) == lat_col)
+  } else {
+    lat_col_idx <- grep("^lat", col_names_lower)[1]
+  }
+
+  if (!is.null(lon_col)) {
+    if (!lon_col %in% names(sites_raw)) {
+      stop("Specified lon_col '", lon_col, "' not found in data.\n",
+           "Available columns: ", paste(names(sites_raw), collapse = ", "))
+    }
+    lon_col_idx <- which(names(sites_raw) == lon_col)
+  } else {
+    lon_col_idx <- grep("^lon", col_names_lower)[1]
+  }
 
   if (is.na(lat_col_idx) || is.na(lon_col_idx)) {
     stop("Could not find latitude/longitude columns.\n",
-         "Column names should start with 'lat' and 'lon'\n",
+         "Column names should start with 'lat' and 'lon', or specify them ",
+         "with lat_col and lon_col arguments.\n",
          "Found: ", paste(names(sites_raw), collapse = ", "))
   }
 
@@ -97,14 +140,22 @@ load_sites <- function(x) {
   longitude <- suppressWarnings(as.numeric(lon_clean))
 
   # Find Site column or create one
-  site_col_idx <- grep("^site$", col_names_lower)[1]
-  if (!is.na(site_col_idx)) {
-    site_name <- as.character(sites_raw[[names(sites_raw)[site_col_idx]]])
-  } else if ("Site" %in% names(sites_raw)) {
-    site_name <- as.character(sites_raw$Site)
+  if (!is.null(site_col)) {
+    if (!site_col %in% names(sites_raw)) {
+      stop("Specified site_col '", site_col, "' not found in data.\n",
+           "Available columns: ", paste(names(sites_raw), collapse = ", "))
+    }
+    site_name <- as.character(sites_raw[[site_col]])
   } else {
-    site_name <- paste0("Site_", seq_len(nrow(sites_raw)))
-    message("  No 'Site' column found, created generic names")
+    site_col_idx <- grep("^site$", col_names_lower)[1]
+    if (!is.na(site_col_idx)) {
+      site_name <- as.character(sites_raw[[names(sites_raw)[site_col_idx]]])
+    } else if ("Site" %in% names(sites_raw)) {
+      site_name <- as.character(sites_raw$Site)
+    } else {
+      site_name <- paste0("Site_", seq_len(nrow(sites_raw)))
+      message("  No 'Site' column found, created generic names")
+    }
   }
 
   # Create cleaned data frame with original site name preserved
@@ -136,6 +187,14 @@ load_sites <- function(x) {
   if (any(invalid_lon)) {
     warning("Removing ", sum(invalid_lon), " rows with invalid longitude")
     sites_clean <- sites_clean[!invalid_lon, ]
+  }
+
+  # Remove (0, 0) coordinates - likely placeholder/missing data
+  zero_coords <- sites_clean$latitude == 0 & sites_clean$longitude == 0
+  if (any(zero_coords)) {
+    warning("Removing ", sum(zero_coords),
+            " rows with (0, 0) coordinates (likely missing data)")
+    sites_clean <- sites_clean[!zero_coords, ]
   }
 
   # Look for datetime column BEFORE creating unique IDs
@@ -235,16 +294,26 @@ load_sites <- function(x) {
   sites_clean <- sites_clean[!duplicated(dup_key), ]
 
   # Preserve lake name column if present (for name-based matching)
-  lake_name_patterns <- c("^lake[._]?name$", "^lakename$", "^lake$", "^waterbody$", "^water[._]?body$")
-  for (pattern in lake_name_patterns) {
-    lake_col_idx <- grep(pattern, col_names_lower)[1]
-    if (!is.na(lake_col_idx)) {
-      lake_col_name <- names(sites_raw)[lake_col_idx]
-      # Use row_id to match back to original data (before row_id is removed)
-      row_ids <- sites_clean$row_id
-      sites_clean$lake.name <- as.character(sites_raw[[lake_col_name]][row_ids])
-      message("  Preserved lake name column: ", lake_col_name)
-      break
+  if (!is.null(lake_col)) {
+    if (!lake_col %in% names(sites_raw)) {
+      stop("Specified lake_col '", lake_col, "' not found in data.\n",
+           "Available columns: ", paste(names(sites_raw), collapse = ", "))
+    }
+    row_ids <- sites_clean$row_id
+    sites_clean$lake.name <- as.character(sites_raw[[lake_col]][row_ids])
+    message("  Using specified lake name column: ", lake_col)
+  } else {
+    lake_name_patterns <- c("^lake[._]?name$", "^lakename$", "^lake$", "^waterbody$", "^water[._]?body$")
+    for (pattern in lake_name_patterns) {
+      lake_col_idx <- grep(pattern, col_names_lower)[1]
+      if (!is.na(lake_col_idx)) {
+        lake_col_name <- names(sites_raw)[lake_col_idx]
+        # Use row_id to match back to original data (before row_id is removed)
+        row_ids <- sites_clean$row_id
+        sites_clean$lake.name <- as.character(sites_raw[[lake_col_name]][row_ids])
+        message("  Preserved lake name column: ", lake_col_name)
+        break
+      }
     }
   }
 
