@@ -135,10 +135,8 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
     return(NULL)
   }
 
-  # Helper to query OSM by name using regex filter
+  # Helper to query OSM by name using exact match
   query_osm_by_name <- function(bbox, name, max_attempts = 3) {
-    # Escape regex special characters in lake name
-    escaped_name <- gsub("([.\\\\+*?\\[\\^\\]$(){}=!<>|:\\-])", "\\\\\\1", name)
     for (attempt in seq_len(max_attempts)) {
       server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
 
@@ -148,8 +146,8 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
         osm_query <- osmdata::add_osm_feature(osm_query,
                                                key = "natural", value = "water")
         osm_query <- osmdata::add_osm_feature(osm_query,
-                                               key = "name", value = escaped_name,
-                                               value_exact = FALSE)
+                                               key = "name", value = name,
+                                               value_exact = TRUE)
         result <- osmdata::osmdata_sf(osm_query)
         osmdata::set_overpass_url(overpass_servers[1])
         return(result)
