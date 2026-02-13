@@ -9,7 +9,8 @@ fetch_calculate(
   lake,
   depth_m = NULL,
   fetch_method = NULL,
-  add_context = TRUE
+  add_context = TRUE,
+  find_max_fetch = FALSE
 )
 }
 \arguments{
@@ -32,12 +33,20 @@ cosine of angle from center. Based on Shore Protection Manual (1984).}
 If NULL, uses the value from \code{\link{lakefetch_options}}.}
 
 \item{add_context}{Logical; add NHD context if available (default TRUE)}
+
+\item{find_max_fetch}{Logical; if TRUE, finds the location in each lake with
+the maximum possible fetch using a longest-internal-chord algorithm. The
+result is returned as a \code{$max_fetch} element in the output list.
+Default FALSE.}
 }
 \value{
 A list with elements:
 \item{results}{sf object with fetch results for each site}
 \item{lakes}{sf object with lake polygons used}
 \item{angles}{Vector of angles used for fetch calculation}
+\item{max_fetch}{(only if \code{find_max_fetch = TRUE}) sf object with one
+row per lake containing the maximum fetch location, chord length (meters),
+and chord bearing (degrees)}
 }
 \description{
 Main entry point for fetch calculation. Takes sites and lake boundaries,
@@ -73,6 +82,10 @@ results <- fetch_calculate(sites, lake, fetch_method = "cosine")
 # Access results
 results$results  # sf with all fetch data
 results$lakes    # lake polygons
+
+# Find the location with maximum fetch in each lake
+results <- fetch_calculate(sites, lake, find_max_fetch = TRUE)
+results$max_fetch  # sf with max fetch location per lake
 }
 
 }

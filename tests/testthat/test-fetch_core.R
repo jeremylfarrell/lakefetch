@@ -149,3 +149,71 @@ test_that("exposure categories are assigned correctly", {
   result_large <- calc_test_fetch(site, large_lake, buffer_m = 0)
   expect_gt(result_large$mean, 3500)
 })
+
+# ==============================================================================
+# Tests for max fetch location (longest internal chord)
+# ==============================================================================
+
+test_that("max fetch chord for circular lake equals diameter at center", {
+  radius <- 1000
+  lake <- create_circular_lake(radius = radius, n_points = 720)
+
+  chord <- lakefetch:::find_longest_internal_chord(lake)
+
+  # Max chord should be approximately the diameter (2 * radius)
+  expect_equal(chord$max_chord_length, 2 * radius, tolerance = 0.02)
+
+  # Midpoint should be near the center (500000, 4800000)
+  mid_coords <- sf::st_coordinates(sf::st_sfc(chord$midpoint, crs = 32618))
+  expect_equal(unname(mid_coords[1, 1]), 500000, tolerance = 50)
+  expect_equal(unname(mid_coords[1, 2]), 4800000, tolerance = 50)
+})
+
+test_that("max fetch chord for rectangular lake equals diagonal", {
+  width <- 4000
+  height <- 1000
+  lake <- create_rectangular_lake(width = width, height = height)
+
+  chord <- lakefetch:::find_longest_internal_chord(lake)
+
+  # For a rectangle, longest internal chord = diagonal
+  expected_diag <- sqrt(width^2 + height^2)
+  expect_equal(chord$max_chord_length, expected_diag, tolerance = 0.05 * expected_diag)
+})
+
+test_that("find_max_fetch_location returns correct sf structure", {
+  radius <- 1000
+  lake <- create_circular_lake(radius = radius, n_points = 360)
+
+  result <- lakefetch:::find_max_fetch_location(lake, 32618, fetch_method = "max",
+                                                 refine = FALSE)
+
+  # Should be an sf object with 1 row
+  expect_s3_class(result, "sf")
+  expect_equal(nrow(result), 1)
+
+  # Should have required columns
+  expect_true("max_chord_m" %in% names(result))
+  expect_true("chord_bearing_deg" %in% names(result))
+  expect_true("lake_name" %in% names(result))
+
+  # Max chord should be approximately the diameter
+  expect_equal(result$max_chord_m, 2 * radius, tolerance = 0.02)
+})
+
+test_that("find_max_fetch_location with refine returns fetch metrics", {
+  radius <- 500
+  lake <- create_circular_lake(radius = radius, n_points = 360)
+
+  result <- lakefetch:::find_max_fetch_location(lake, 32618, fetch_method = "max",
+                                                 refine = TRUE)
+
+  # Should have fetch columns when refined
+  expect_true("fetch_effective" %in% names(result))
+  expect_true("fetch_max" %in% names(result))
+  expect_true("fetch_mean" %in% names(result))
+
+  # Fetch max from ray-casting at center should be approximately the radius
+  # (ray from center hits shore at radius distance)
+  expect_equal(result$fetch_max, radius, tolerance = 0.05 * radius)
+})

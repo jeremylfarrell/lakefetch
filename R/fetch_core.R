@@ -23,11 +23,18 @@
 #'   }
 #'   If NULL, uses the value from \code{\link{lakefetch_options}}.
 #' @param add_context Logical; add NHD context if available (default TRUE)
+#' @param find_max_fetch Logical; if TRUE, finds the location in each lake with
+#'   the maximum possible fetch using a longest-internal-chord algorithm. The
+#'   result is returned as a \code{$max_fetch} element in the output list.
+#'   Default FALSE.
 #'
 #' @return A list with elements:
 #'   \item{results}{sf object with fetch results for each site}
 #'   \item{lakes}{sf object with lake polygons used}
 #'   \item{angles}{Vector of angles used for fetch calculation}
+#'   \item{max_fetch}{(only if \code{find_max_fetch = TRUE}) sf object with one
+#'     row per lake containing the maximum fetch location, chord length (meters),
+#'     and chord bearing (degrees)}
 #'
 #' @details
 #' For each site, the function:
@@ -62,11 +69,15 @@
 #' # Access results
 #' results$results  # sf with all fetch data
 #' results$lakes    # lake polygons
+#'
+#' # Find the location with maximum fetch in each lake
+#' results <- fetch_calculate(sites, lake, find_max_fetch = TRUE)
+#' results$max_fetch  # sf with max fetch location per lake
 #' }
 #'
 #' @export
 fetch_calculate <- function(sites, lake, depth_m = NULL, fetch_method = NULL,
-                            add_context = TRUE) {
+                            add_context = TRUE, find_max_fetch = FALSE) {
 
   # Extract components from lake data
   all_lakes <- lake$all_lakes
@@ -129,6 +140,31 @@ fetch_calculate <- function(sites, lake, depth_m = NULL, fetch_method = NULL,
       fetch_data$lakes,
       utm_epsg
     )
+  }
+
+  # Find max fetch location for each lake if requested
+  if (find_max_fetch) {
+    message("Finding maximum fetch locations...")
+    lake_polys <- fetch_data$lakes
+    max_fetch_list <- vector("list", nrow(lake_polys))
+
+    for (i in seq_len(nrow(lake_polys))) {
+      lake_poly <- lake_polys[i, ]
+      lake_nm <- if ("name" %in% names(lake_poly)) lake_poly$name[1] else
+        lake_poly$osm_id[1]
+      message("  Finding max fetch for: ",
+              ifelse(is.na(lake_nm), "unknown", lake_nm))
+
+      max_fetch_list[[i]] <- find_max_fetch_location(
+        lake_poly, utm_epsg, fetch_method = fetch_method, refine = TRUE
+      )
+    }
+
+    # Remove NULLs and combine
+    max_fetch_list <- max_fetch_list[!vapply(max_fetch_list, is.null, logical(1))]
+    if (length(max_fetch_list) > 0) {
+      fetch_data$max_fetch <- do.call(rbind, max_fetch_list)
+    }
   }
 
   return(fetch_data)
@@ -605,6 +641,204 @@ calc_effective_fetch <- function(fetch_matrix, angles, method = "top3") {
   } else {
     stop("Unknown fetch method: ", method)
   }
+}
+
+#' Find the Longest Internal Chord of a Lake Polygon
+#'
+#' Finds the longest straight line between two boundary points that lies
+#' entirely within the polygon. This represents the maximum possible
+#' single-direction fetch for any point in the lake.
+#'
+#' @param polygon sf POLYGON object (single lake)
+#' @param n_sample Maximum number of boundary points to sample (default 500).
+#'   Higher values give more precision but take longer.
+#'
+#' @return List with elements:
+#'   \item{midpoint}{sf point at the midpoint of the chord}
+#'   \item{max_chord_length}{Length of the chord in meters}
+#'   \item{bearing}{Bearing of the chord in degrees (0-360)}
+#'   \item{endpoints}{2x2 matrix of chord endpoint coordinates}
+#'   Returns NULL if polygon has fewer than 3 vertices.
+#'
+#' @noRd
+find_longest_internal_chord <- function(polygon, n_sample = 500) {
+
+  # Extract boundary coordinates (remove L1/L2 index columns)
+  coords <- sf::st_coordinates(polygon)
+  coords <- coords[, 1:2, drop = FALSE]
+  N <- nrow(coords)
+
+  if (N < 3) return(NULL)
+
+  # Remove duplicate closing vertex if present
+  if (all(coords[1, ] == coords[N, ])) {
+    coords <- coords[-N, , drop = FALSE]
+    N <- N - 1
+  }
+
+  # Subsample if too many vertices
+  if (N > n_sample) {
+    idx <- round(seq(1, N, length.out = n_sample))
+    coords <- coords[idx, , drop = FALSE]
+    N <- n_sample
+  }
+
+  # Compute pairwise distance matrix
+  dist_mat <- as.matrix(stats::dist(coords))
+
+  # Get upper triangle pairs sorted by distance descending
+  pairs <- which(upper.tri(dist_mat), arr.ind = TRUE)
+  pair_dists <- dist_mat[pairs]
+  ord <- order(pair_dists, decreasing = TRUE)
+
+  crs_val <- sf::st_crs(polygon)
+
+  # Check containment in batches (much faster than one-at-a-time)
+  batch_size <- 100
+  max_checks <- min(length(ord), 5000)  # Safety cap for degenerate cases
+
+  for (start in seq(1, max_checks, by = batch_size)) {
+    end_idx <- min(start + batch_size - 1, max_checks)
+    batch_ord <- ord[start:end_idx]
+
+    # Build batch of line segments
+    lines_list <- lapply(batch_ord, function(k) {
+      i <- pairs[k, 1]
+      j <- pairs[k, 2]
+      sf::st_linestring(rbind(coords[i, ], coords[j, ]))
+    })
+    lines_sfc <- sf::st_sfc(lines_list, crs = crs_val)
+
+    # Check which lines are entirely within the polygon
+    covered <- tryCatch(
+      sf::st_covered_by(lines_sfc, polygon, sparse = FALSE)[, 1],
+      error = function(e) rep(FALSE, length(lines_list))
+    )
+
+    first_valid <- which(covered)[1]
+    if (!is.na(first_valid)) {
+      k <- batch_ord[first_valid]
+      i <- pairs[k, 1]
+      j <- pairs[k, 2]
+
+      midpoint <- sf::st_point(colMeans(coords[c(i, j), ]))
+      dx <- coords[j, 1] - coords[i, 1]
+      dy <- coords[j, 2] - coords[i, 2]
+      bearing <- (atan2(dx, dy) * 180 / pi) %% 360
+
+      return(list(
+        midpoint = midpoint,
+        max_chord_length = pair_dists[k],
+        bearing = bearing,
+        endpoints = coords[c(i, j), ]
+      ))
+    }
+  }
+
+  # Fallback: no valid chord found (very degenerate polygon)
+  # Use centroid and report NA for chord length
+  centroid_coords <- sf::st_coordinates(sf::st_centroid(polygon))
+  return(list(
+    midpoint = sf::st_point(centroid_coords[1, 1:2]),
+    max_chord_length = NA_real_,
+    bearing = NA_real_,
+    endpoints = NULL
+  ))
+}
+
+#' Find the Location with Maximum Fetch in a Lake
+#'
+#' Uses a geometric approach to find the point within a lake that has the
+#' highest possible fetch. Computes the longest internal chord of the lake
+#' polygon (the longest straight line between two shore points that stays
+#' entirely over water). The midpoint of this chord is the maximum-fetch
+#' location.
+#'
+#' @param lake_polygon sf POLYGON object (single lake, UTM CRS)
+#' @param utm_epsg EPSG code for UTM projection
+#' @param fetch_method Method for effective fetch ("top3", "max", or "cosine").
+#'   Only used when \code{refine = TRUE}.
+#' @param n_sample Maximum boundary points to sample (default 500)
+#' @param refine Logical; if TRUE, runs full directional ray-cast fetch from
+#'   the midpoint to compute effective fetch, fetch_max, and fetch_mean.
+#'   Default FALSE (returns only chord-based metrics).
+#'
+#' @return sf object (1 row) with columns:
+#'   \item{lake_name}{Name of the lake}
+#'   \item{lake_osm_id}{OSM identifier}
+#'   \item{max_chord_m}{Length of longest internal chord (meters)}
+#'   \item{chord_bearing_deg}{Bearing of the chord (degrees, 0-360)}
+#'   \item{fetch_effective}{Effective fetch at midpoint (only if refine=TRUE)}
+#'   \item{fetch_max}{Max directional fetch at midpoint (only if refine=TRUE)}
+#'   \item{fetch_mean}{Mean directional fetch at midpoint (only if refine=TRUE)}
+#'   \item{geometry}{POINT location of maximum fetch}
+#'
+#' @noRd
+find_max_fetch_location <- function(lake_polygon, utm_epsg,
+                                     fetch_method = "top3",
+                                     n_sample = 500,
+                                     refine = FALSE) {
+
+  # Validate geometry
+  if (!all(sf::st_is_valid(lake_polygon))) {
+    lake_polygon <- sf::st_make_valid(lake_polygon)
+  }
+
+  # Phase 1: Find longest internal chord
+  chord <- find_longest_internal_chord(lake_polygon, n_sample = n_sample)
+
+  if (is.null(chord)) {
+    warning("Could not find internal chord for lake: ",
+            if ("name" %in% names(lake_polygon)) lake_polygon$name[1] else "unknown")
+    return(NULL)
+  }
+
+  # Build result sf
+  result_data <- data.frame(
+    lake_name = if ("name" %in% names(lake_polygon)) lake_polygon$name[1] else NA_character_,
+    lake_osm_id = if ("osm_id" %in% names(lake_polygon)) lake_polygon$osm_id[1] else NA_character_,
+    max_chord_m = chord$max_chord_length,
+    chord_bearing_deg = chord$bearing,
+    stringsAsFactors = FALSE
+  )
+
+  result_sf <- sf::st_sf(
+    result_data,
+    geometry = sf::st_sfc(chord$midpoint, crs = utm_epsg)
+  )
+
+  # Phase 2: Optional ray-cast refinement
+  if (refine && !is.na(chord$max_chord_length)) {
+    lake_boundary <- tryCatch({
+      sf::st_cast(lake_polygon, "MULTILINESTRING")
+    }, error = function(e) {
+      tryCatch({
+        sf::st_cast(sf::st_boundary(lake_polygon), "MULTILINESTRING")
+      }, error = function(e2) {
+        sf::st_boundary(lake_polygon)
+      })
+    })
+
+    angles <- seq(0, 360 - get_opt("angle_resolution_deg"),
+                  by = get_opt("angle_resolution_deg"))
+
+    midpoint_sf <- sf::st_sf(
+      geometry = sf::st_sfc(chord$midpoint, crs = utm_epsg)
+    )
+
+    fetch_vals <- get_highres_fetch(midpoint_sf, lake_boundary,
+                                     lake_polygon, angles)
+
+    eff <- calc_effective_fetch(
+      matrix(fetch_vals, nrow = 1), angles, fetch_method
+    )[1]
+
+    result_sf$fetch_effective <- eff
+    result_sf$fetch_max <- max(fetch_vals)
+    result_sf$fetch_mean <- mean(fetch_vals)
+  }
+
+  return(result_sf)
 }
 
 #' Calculate Orbital Velocity
