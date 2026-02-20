@@ -16,9 +16,8 @@ for R package CI/CD.
 * Win-builder: Windows Server 2022, R-devel
 * R-hub: Ubuntu Linux (R-devel)
 * R-hub: Windows (R-devel)
-* R-hub: macOS ARM64 (R-devel) — infrastructure failure during dependency
-  installation (httpuv compilation failed due to missing m4/perl on runner;
-  not a package issue). Package code was not reached.
+* R-hub: macOS ARM64 (R-devel)
+* Mac Builder: macOS 26.2, Apple M1, R-devel
 
 ## Downstream dependencies
 
