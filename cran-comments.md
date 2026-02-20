@@ -1,17 +1,24 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 2 notes
 
-The NOTE is about the `.github` directory containing GitHub Actions workflows
-for R-hub automated checking. This is intentional and follows current best
-practices for R package CI/CD.
+NOTE 1: New submission with "misspelled" words (Hydrography, NHD,
+OpenStreetMap, hydrological) — these are correct technical terms.
+
+NOTE 2: `.github` directory containing GitHub Actions workflows for R-hub
+automated checking. This is intentional and follows current best practices
+for R package CI/CD.
 
 ## Test environments
 
 * Local: Windows 11 x64 (build 26200), R 4.4.1
+* Win-builder: Windows Server 2022, R 4.5.2 Patched (2026-02-13)
+* Win-builder: Windows Server 2022, R-devel
 * R-hub: Ubuntu Linux (R-devel)
-* R-hub: macOS ARM64 (R-devel)
 * R-hub: Windows (R-devel)
+* R-hub: macOS ARM64 (R-devel) — infrastructure failure during dependency
+  installation (httpuv compilation failed due to missing m4/perl on runner;
+  not a package issue). Package code was not reached.
 
 ## Downstream dependencies
 
@@ -42,6 +49,12 @@ The package makes HTTP requests to:
 
 All API calls are wrapped in tryCatch() with informative error messages,
 and users can alternatively provide local boundary files.
+
+### URL note
+
+The USGS National Hydrography Dataset URL (https://www.usgs.gov/national-hydrography)
+in DESCRIPTION returns HTTP 403 to automated checkers but is accessible in
+browsers. This is a known USGS server configuration.
 
 ### Examples
 

@@ -422,12 +422,29 @@ calculate_fetch_single_lake <- function(sites, lake_polygon, utm_epsg,
   site_depth <- if ("depth_m" %in% names(results)) results$depth_m else get_opt("default_depth_m")
   results$orbital_effective <- calc_orbital(results$fetch_effective, depth_m = site_depth)
 
-  # Exposure classification using configurable thresholds
+  # Exposure classification using configurable absolute thresholds
   sheltered_threshold <- get_opt("exposure_sheltered_m")
   exposed_threshold <- get_opt("exposure_exposed_m")
   results$exposure_category <- ifelse(results$fetch_effective < sheltered_threshold, "Sheltered",
                                       ifelse(results$fetch_effective > exposed_threshold, "Exposed",
                                              "Moderate"))
+
+  # Relative exposure classification (proportion of lake maximum fetch)
+  chord <- find_longest_internal_chord(lake_polygon)
+  max_chord_m <- if (!is.null(chord)) chord$max_chord_length else NA_real_
+  results$lake_max_chord_m <- max_chord_m
+
+  if (!is.na(max_chord_m) && max_chord_m > 0) {
+    results$fetch_proportion <- results$fetch_effective / max_chord_m
+    rel_sheltered <- get_opt("exposure_relative_sheltered")
+    rel_exposed <- get_opt("exposure_relative_exposed")
+    results$exposure_relative <- ifelse(results$fetch_proportion < rel_sheltered, "Sheltered",
+                                        ifelse(results$fetch_proportion > rel_exposed, "Exposed",
+                                               "Moderate"))
+  } else {
+    results$fetch_proportion <- NA_real_
+    results$exposure_relative <- NA_character_
+  }
 
   results_sf <- sf::st_sf(results, geometry = sf::st_geometry(sites_buffered))
 

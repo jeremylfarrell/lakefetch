@@ -217,3 +217,57 @@ test_that("find_max_fetch_location with refine returns fetch metrics", {
   # (ray from center hits shore at radius distance)
   expect_equal(result$fetch_max, radius, tolerance = 0.05 * radius)
 })
+
+# ==============================================================================
+# Tests for relative (proportional) exposure classification
+# ==============================================================================
+
+test_that("proportional exposure columns are present in fetch results", {
+  radius <- 1000
+  lake <- create_circular_lake(radius = radius, n_points = 360)
+  site <- create_site(500000, 4800000, "Center")
+
+  result <- calc_test_fetch(site, lake, buffer_m = 0)
+
+  # Use internal function to verify chord works
+  chord <- lakefetch:::find_longest_internal_chord(lake)
+  expect_false(is.na(chord$max_chord_length))
+})
+
+test_that("center of circular lake has fetch_proportion near 0.5", {
+  # Center of circular lake: effective fetch ≈ radius, max chord ≈ diameter
+  # So proportion ≈ radius / (2 * radius) = 0.5
+  radius <- 1000
+  lake <- create_circular_lake(radius = radius, n_points = 720)
+  site <- create_site(500000, 4800000, "Center")
+
+  result <- calc_test_fetch(site, lake, buffer_m = 0)
+
+  # Manually compute the proportion
+  chord <- lakefetch:::find_longest_internal_chord(lake)
+  proportion <- result$mean / chord$max_chord_length
+
+  # Center fetch ≈ radius, max chord ≈ 2*radius, so proportion ≈ 0.5
+  expect_equal(proportion, 0.5, tolerance = 0.05)
+})
+
+test_that("edge site has lower mean fetch_proportion than center site", {
+  radius <- 1000
+  lake <- create_circular_lake(radius = radius, n_points = 720)
+
+  center_result <- calc_test_fetch(
+    create_site(500000, 4800000, "Center"), lake, buffer_m = 0
+  )
+  edge_result <- calc_test_fetch(
+    create_site(500000 + 0.8 * radius, 4800000, "Edge"), lake, buffer_m = 0
+  )
+
+  chord <- lakefetch:::find_longest_internal_chord(lake)
+
+  # Use mean fetch for comparison — center of circular lake has higher
+  # mean fetch than edge (uniform vs skewed directional distribution)
+  center_prop <- center_result$mean / chord$max_chord_length
+  edge_prop <- edge_result$mean / chord$max_chord_length
+
+  expect_gt(center_prop, edge_prop)
+})

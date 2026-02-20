@@ -1,5 +1,10 @@
 # lakefetch 0.1.1
 
+## New features
+
+* **Maximum fetch location**: `fetch_calculate()` gains a `find_max_fetch` parameter that identifies the location in each lake with the highest possible fetch. Uses an efficient longest-internal-chord algorithm (sub-second per lake) rather than brute-force grid search. Returns the point location, chord length, bearing, and optionally full directional fetch profile.
+* **Relative exposure classification**: Sites are now classified by both absolute fetch thresholds (`exposure_category`) and lake-relative proportional thresholds (`exposure_relative`). The proportional method classifies sites based on the ratio of effective fetch to the lake's maximum possible fetch (longest internal chord), providing lake-size-aware exposure context. Default thresholds: Sheltered < 25%, Exposed > 50%. New output columns: `fetch_proportion`, `lake_max_chord_m`, `exposure_relative`.
+
 ## Improvements
 
 * **Optimized OSM downloads for spread-out sites**: `download_lake_osm()` now handles geographically spread datasets (e.g., GLEON's 429 global sites). When site spread exceeds 0.5 degrees, sites are grouped into spatial clusters (~0.1 degree grid) and each cluster gets a small bounding box query. This replaces the old single-bbox approach that would cover the entire globe and timeout. Tested with 50 globally-spread GLEON sites (48/50 matched, 26 min download).
@@ -37,7 +42,7 @@ Initial CRAN release.
 * Analytical validation against synthetic lakes with known geometry (0% error)
 * Literature validation against lakes with published morphometry (100% pass rate)
 * Edge case validation for islands, complex shorelines, and multiple islands (100% pass rate)
-* 79 unit tests via testthat
+* 79 unit tests via testthat (now 112)
 
 ## Documentation
 

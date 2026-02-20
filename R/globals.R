@@ -28,6 +28,12 @@
   exposure_sheltered_m = 2500,
   exposure_exposed_m = 5000,
 
+  # Relative exposure classification thresholds (proportion of lake max chord)
+  # These classify sites based on the ratio of effective fetch to the lake's
+  # maximum possible fetch (longest internal chord).
+  exposure_relative_sheltered = 0.25,
+  exposure_relative_exposed = 0.50,
+
   use_parallel = TRUE,
 
   use_nhd = TRUE
@@ -62,6 +68,13 @@
 #'   \item{exposure_exposed_m}{Fetch threshold above which sites are classified
 #'     as "Exposed" (default: 5000 m). Sites between thresholds are "Moderate".
 #'     See Mason et al. (2018) for Great Lakes exposure mapping methodology.}
+#'   \item{exposure_relative_sheltered}{Proportion of lake maximum fetch below
+#'     which sites are classified as "Sheltered" in the relative exposure system
+#'     (default: 0.25). Sites are classified relative to the lake's longest
+#'     internal chord (maximum possible fetch).}
+#'   \item{exposure_relative_exposed}{Proportion of lake maximum fetch above
+#'     which sites are classified as "Exposed" in the relative exposure system
+#'     (default: 0.50). Sites between thresholds are "Moderate".}
 #'   \item{use_parallel}{Use parallel processing for multi-lake (default: TRUE)}
 #'   \item{use_nhd}{Use NHD integration if available (default: TRUE)}
 #' }
