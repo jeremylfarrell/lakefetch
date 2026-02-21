@@ -1,13 +1,10 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 2 notes
+0 errors | 0 warnings | 1 note
 
-NOTE 1: New submission with "misspelled" words (Hydrography, NHD,
-OpenStreetMap, hydrological) — these are correct technical terms.
-
-NOTE 2: `.github` directory containing GitHub Actions workflows for R-hub
-automated checking. This is intentional and follows current best practices
-for R package CI/CD.
+NOTE: New submission. Possibly misspelled words (Hydrography, NHD,
+OpenStreetMap, hydrological) are correct domain-specific terms listed
+in inst/WORDLIST.
 
 ## Test environments
 
