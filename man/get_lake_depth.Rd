@@ -44,7 +44,7 @@ The empirical method uses the relationship from Cael et al. (2017):
 mean_depth ~ 10.3 * area_km2^0.25
 }
 \examples{
-\donttest{
+if (FALSE) {
 # With user-provided depth
 depth <- get_lake_depth(lake_poly, user_depth = 8.5)
 

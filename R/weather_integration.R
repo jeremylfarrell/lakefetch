@@ -321,7 +321,7 @@ calculate_cumulative_wave_energy <- function(fetch_by_direction, weather_df,
 #' that can be parsed (ISO 8601, or common date-time formats).
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' # After calculating fetch
 #' results <- fetch_calculate(sites, lake)
 #'

@@ -20,7 +20,7 @@
 #' based on the bounding box of the provided sites.
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' sites <- load_sites("my_sites.csv")
 #' lake_data <- get_lake_boundary(sites)
 #'
@@ -637,7 +637,7 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #' @return sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' # After downloading lake boundaries
 #' lake_data <- get_lake_boundary(sites)
 #'

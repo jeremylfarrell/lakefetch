@@ -67,6 +67,8 @@ NULL
     lakefetch.fetch_method = "top3",
     lakefetch.exposure_sheltered_m = 2500,
     lakefetch.exposure_exposed_m = 5000,
+    lakefetch.exposure_relative_sheltered = 0.25,
+    lakefetch.exposure_relative_exposed = 0.50,
     lakefetch.use_parallel = TRUE,
     lakefetch.use_nhd = TRUE
   )

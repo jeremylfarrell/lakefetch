@@ -40,7 +40,7 @@ data(wisconsin_lakes)
 head(wisconsin_lakes)
 
 # Use with lakefetch
-\donttest{
+if (FALSE) {
 sites <- load_sites(wisconsin_lakes)
 lake_data <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake_data)

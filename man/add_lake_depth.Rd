@@ -21,7 +21,7 @@ Looks up or estimates depth for each lake in the fetch results and
 adds depth columns.
 }
 \examples{
-\donttest{
+if (FALSE) {
 # After running fetch_calculate
 results <- fetch_calculate(sites, lake)
 

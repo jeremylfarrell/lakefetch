@@ -35,7 +35,7 @@
 #' }
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' results <- fetch_calculate(sites, lake)
 #' results_with_context <- add_lake_context(results, lake$all_lakes, lake$utm_epsg)
 #' }

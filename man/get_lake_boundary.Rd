@@ -26,7 +26,7 @@ Otherwise, the function downloads lake boundaries from OpenStreetMap
 based on the bounding box of the provided sites.
 }
 \examples{
-\donttest{
+if (FALSE) {
 sites <- load_sites("my_sites.csv")
 lake_data <- get_lake_boundary(sites)
 

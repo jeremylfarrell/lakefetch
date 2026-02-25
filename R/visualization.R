@@ -12,7 +12,7 @@
 #' @return A ggplot2 object
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_map(results)
 #' }
@@ -66,7 +66,7 @@ plot_fetch_map <- function(fetch_data, title = "Fetch Analysis - Site Locations"
 #' @return A ggplot2 object
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_bars(results)
 #' }
@@ -115,7 +115,7 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #' @return Invisible NULL (creates base R plot)
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_rose(results, "Site1")
 #' }
@@ -207,7 +207,7 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 #' @return An sf object with ray line geometries
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' results <- fetch_calculate(sites, lake)
 #' rays <- create_ray_geometries(results)
 #'

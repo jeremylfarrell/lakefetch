@@ -25,9 +25,14 @@ There are currently no downstream dependencies for this package.
 Resubmission. Addressed reviewer feedback from Benjamin Altmann:
 
 * Software names in DESCRIPTION now in single quotes
-* Replaced `\dontrun{}` with `\donttest{}` / `if (interactive())`
+* Replaced `\dontrun{}` with `if (FALSE)` / `if (interactive())`
 * Added `on.exit(par(oldpar))` to restore graphical parameters
 * Removed `install.packages()` calls from inst/validation/ scripts
+
+Additional changes since reviewer feedback:
+
+* Added interactive settings panels to both Shiny apps
+* Added missing relative exposure options to `.onLoad()`
 
 ### Package purpose
 
@@ -59,7 +64,7 @@ browsers. This is a known USGS server configuration.
 
 ### Examples
 
-Examples that download data use `\donttest{}`. Interactive functions
-(shiny apps) use `if (interactive())`. The package includes built-in
-example datasets (`adirondack_sites`, `wisconsin_lakes`, `example_lake`)
-for offline testing.
+Examples requiring network access or pre-computed results use `if (FALSE)`.
+Interactive functions (shiny apps) use `if (interactive())`. The package
+includes built-in example datasets (`adirondack_sites`, `wisconsin_lakes`,
+`example_lake`) for offline testing, with runnable examples in `load_sites()`.

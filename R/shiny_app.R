@@ -2,6 +2,21 @@
 # Shiny Interactive App
 # ==============================================================================
 
+# Internal helper to reclassify exposure from pre-computed fetch values
+# @noRd
+reclassify_exposure <- function(results, sheltered_m, exposed_m,
+                                 rel_sheltered, rel_exposed) {
+  results$exposure_category <- ifelse(
+    results$fetch_effective < sheltered_m, "Sheltered",
+    ifelse(results$fetch_effective > exposed_m, "Exposed", "Moderate"))
+  if ("fetch_proportion" %in% names(results)) {
+    results$exposure_relative <- ifelse(
+      results$fetch_proportion < rel_sheltered, "Sheltered",
+      ifelse(results$fetch_proportion > rel_exposed, "Exposed", "Moderate"))
+  }
+  results
+}
+
 #' Launch Interactive Fetch App
 #'
 #' Launch a Shiny app for interactive exploration of fetch calculation results.
@@ -97,9 +112,52 @@ fetch_app <- function(fetch_data, title = NULL) {
         shiny::uiOutput("click_results"),
         shiny::hr(),
         shiny::h5("Color Legend:"),
-        shiny::p(style = "color: firebrick;", "Red: > 5 km (Exposed)"),
-        shiny::p(style = "color: gold;", "Gold: 2.5-5 km (Moderate)"),
-        shiny::p(style = "color: forestgreen;", "Green: < 2.5 km (Sheltered)"),
+        shiny::uiOutput("legend_text"),
+        shiny::hr(),
+        shiny::tags$details(
+          shiny::tags$summary(shiny::strong("Settings")),
+          shiny::tags$br(),
+          shiny::tags$em("Display", style = "color: #666;"),
+          shiny::selectInput("exposure_mode", "Exposure classification",
+                             choices = c("Absolute (meters)" = "absolute",
+                                        "Relative (proportion)" = "relative"),
+                             selected = "absolute"),
+          shiny::conditionalPanel(
+            condition = "input.exposure_mode == 'absolute'",
+            shiny::numericInput("sheltered_m", "Sheltered threshold (m)",
+                                value = 2500, min = 100, max = 50000, step = 100),
+            shiny::numericInput("exposed_m", "Exposed threshold (m)",
+                                value = 5000, min = 100, max = 50000, step = 100)
+          ),
+          shiny::conditionalPanel(
+            condition = "input.exposure_mode == 'relative'",
+            shiny::numericInput("rel_sheltered", "Sheltered proportion",
+                                value = 0.25, min = 0.01, max = 0.99, step = 0.05),
+            shiny::numericInput("rel_exposed", "Exposed proportion",
+                                value = 0.50, min = 0.01, max = 0.99, step = 0.05)
+          ),
+          shiny::actionButton("apply_display", "Apply Display Settings",
+                              class = "btn-sm btn-info"),
+          shiny::tags$hr(style = "margin: 10px 0;"),
+          shiny::tags$em("Click Analysis", style = "color: #666;"),
+          shiny::selectInput("click_method", "Effective fetch method",
+                             choices = c("Mean of top 3" = "top3",
+                                        "Maximum" = "max",
+                                        "SPM cosine-weighted" = "cosine"),
+                             selected = "top3"),
+          shiny::numericInput("click_depth", "Water depth (m)",
+                              value = 10, min = 0.5, max = 100, step = 0.5),
+          shiny::numericInput("click_wind", "Wind speed (m/s)",
+                              value = 10, min = 0, max = 50, step = 0.5),
+          shiny::selectInput("click_angle_res", "Angle resolution",
+                             choices = c("1" = "1", "2" = "2",
+                                        "5" = "5", "10" = "10"),
+                             selected = "5"),
+          shiny::numericInput("click_buffer", "Buffer distance (m)",
+                              value = 10, min = 1, max = 100, step = 1),
+          shiny::numericInput("click_max_fetch", "Max fetch (m)",
+                              value = 50000, min = 1000, max = 200000, step = 1000)
+        ),
         shiny::hr(),
         shiny::actionButton("clear_click", "Clear Custom Point", class = "btn-sm")
       ),
@@ -112,22 +170,104 @@ fetch_app <- function(fetch_data, title = NULL) {
   # Server
   server <- function(input, output, session) {
 
+    # Reactive values for display settings
+    display_rv <- shiny::reactiveValues(
+      results = fetch_data$results,
+      sheltered_m = get_opt("exposure_sheltered_m"),
+      exposed_m = get_opt("exposure_exposed_m"),
+      mode = "absolute"
+    )
+
     # Color palettes
     exposure_pal <- leaflet::colorFactor(
       palette = c("firebrick", "goldenrod", "forestgreen"),
       levels = c("Exposed", "Moderate", "Sheltered")
     )
 
-    ray_pal <- leaflet::colorBin(
-      palette = c("forestgreen", "gold", "firebrick"),
-      domain = c(0, 10000),
-      bins = c(0, 2500, 5000, 50000)
-    )
+    # Reactive ray palette based on current thresholds
+    ray_pal_reactive <- shiny::reactive({
+      leaflet::colorBin(
+        palette = c("forestgreen", "gold", "firebrick"),
+        domain = c(0, max(display_rv$exposed_m * 2, 10000)),
+        bins = c(0, display_rv$sheltered_m, display_rv$exposed_m,
+                 max(display_rv$exposed_m * 10, 50000))
+      )
+    })
+
+    # Initial legend text
+    output$legend_text <- shiny::renderUI({
+      shiny::tagList(
+        shiny::p(style = "color: firebrick;",
+          sprintf("Red: > %.1f km (Exposed)", display_rv$exposed_m / 1000)),
+        shiny::p(style = "color: gold;",
+          sprintf("Gold: %.1f-%.1f km (Moderate)",
+                  display_rv$sheltered_m / 1000, display_rv$exposed_m / 1000)),
+        shiny::p(style = "color: forestgreen;",
+          sprintf("Green: < %.1f km (Sheltered)", display_rv$sheltered_m / 1000))
+      )
+    })
+
+    # Apply display settings - reclassify exposure without recalculation
+    shiny::observeEvent(input$apply_display, {
+      mode <- input$exposure_mode
+      display_rv$mode <- mode
+
+      if (mode == "absolute") {
+        s_m <- input$sheltered_m
+        e_m <- input$exposed_m
+        if (s_m >= e_m) {
+          shiny::showNotification("Sheltered threshold must be less than Exposed threshold",
+                                   type = "warning")
+          return()
+        }
+        display_rv$sheltered_m <- s_m
+        display_rv$exposed_m <- e_m
+      } else {
+        s_r <- input$rel_sheltered
+        e_r <- input$rel_exposed
+        if (s_r >= e_r) {
+          shiny::showNotification("Sheltered proportion must be less than Exposed proportion",
+                                   type = "warning")
+          return()
+        }
+      }
+
+      # Reclassify results
+      updated <- reclassify_exposure(
+        fetch_data$results,
+        sheltered_m = input$sheltered_m,
+        exposed_m = input$exposed_m,
+        rel_sheltered = input$rel_sheltered,
+        rel_exposed = input$rel_exposed
+      )
+      display_rv$results <- updated
+
+      # Get the active exposure column
+      if (mode == "relative" && "exposure_relative" %in% names(updated)) {
+        active_col <- updated$exposure_relative
+      } else {
+        active_col <- updated$exposure_category
+      }
+
+      # Update markers via proxy
+      results_wgs <- sf::st_transform(updated, 4326)
+      leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("site_markers") |>
+        leaflet::addCircleMarkers(
+          data = results_wgs,
+          group = "site_markers",
+          radius = 6,
+          stroke = TRUE, color = "white", weight = 1.5,
+          fillOpacity = 0.9,
+          fillColor = exposure_pal(active_col),
+          layerId = ~Site
+        )
+    })
 
     # Base map
     output$map <- leaflet::renderLeaflet({
 
-      results_wgs <- sf::st_transform(fetch_data$results, 4326)
+      results_wgs <- sf::st_transform(display_rv$results, 4326)
       lakes_wgs <- sf::st_transform(fetch_data$lakes, 4326)
 
       # Build popups - rich with rose plots for small datasets, text-only for large
@@ -260,12 +400,13 @@ fetch_app <- function(fetch_data, title = NULL) {
         )
         site_rays_wgs <- sf::st_transform(site_rays, 4326)
 
+        cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
           leaflet::clearGroup("rays") |>
           leaflet::addPolylines(
             data = site_rays_wgs,
             group = "rays",
-            color = ~ray_pal(Distance),
+            color = ~cur_ray_pal(Distance),
             weight = 2,
             opacity = 0.8,
             popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
@@ -356,16 +497,23 @@ fetch_app <- function(fetch_data, title = NULL) {
           sf::st_boundary(lake_poly)
         })
 
-        # Calculate fetch
-        angle_res <- get_opt("angle_resolution_deg")
+        # Calculate fetch using settings inputs
+        angle_res <- as.numeric(input$click_angle_res)
         angles <- seq(0, 360 - angle_res, by = angle_res)
+
+        # Apply settings for this calculation
+        lakefetch_options(
+          buffer_distance_m = input$click_buffer,
+          max_fetch_m = input$click_max_fetch
+        )
+        on.exit(lakefetch_reset_options(), add = TRUE)
 
         # Nudge point if needed
         nudged_pt <- nudge_inward(
           click_pt_utm,
           lake_boundary,
           lake_poly,
-          get_opt("buffer_distance_m")
+          input$click_buffer
         )
         nudged_sf <- sf::st_sf(
           Site = "Custom Point",
@@ -375,15 +523,16 @@ fetch_app <- function(fetch_data, title = NULL) {
         # Get fetch distances
         fetch_dists <- get_highres_fetch(nudged_sf, lake_boundary, lake_poly, angles)
 
-        # Calculate metrics using configured method
+        # Calculate metrics using settings
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
         fetch_matrix <- matrix(fetch_dists, nrow = 1)
-        fetch_effective <- calc_effective_fetch(fetch_matrix, angles, get_opt("fetch_method"))[1]
-        # Use default depth for click analysis in fetch_app
-        orbital <- calc_orbital(fetch_effective, depth_m = get_opt("default_depth_m"))
-        sheltered_m <- get_opt("exposure_sheltered_m")
-        exposed_m <- get_opt("exposure_exposed_m")
+        fetch_effective <- calc_effective_fetch(fetch_matrix, angles, input$click_method)[1]
+        # Use depth and wind from settings
+        orbital <- calc_orbital(fetch_effective, depth_m = input$click_depth,
+                                wind_speed = input$click_wind)
+        sheltered_m <- display_rv$sheltered_m
+        exposed_m <- display_rv$exposed_m
         exposure <- if (fetch_effective < sheltered_m) "Sheltered" else if (fetch_effective > exposed_m) "Exposed" else "Moderate"
 
         # Create rays for visualization
@@ -426,13 +575,14 @@ fetch_app <- function(fetch_data, title = NULL) {
         )
 
         # Update map with new point and rays
+        cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
           leaflet::clearGroup("rays") |>
           leaflet::clearGroup("custom_point") |>
           leaflet::addPolylines(
             data = rays_wgs,
             group = "rays",
-            color = ~ray_pal(Distance),
+            color = ~cur_ray_pal(Distance),
             weight = 2,
             opacity = 0.8,
             popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
@@ -584,6 +734,30 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
             condition = "input.add_weather",
             shiny::helpText("Requires 'datetime' column in CSV")
           ),
+          shiny::tags$details(
+            shiny::tags$summary(shiny::strong("Advanced Settings")),
+            shiny::tags$br(),
+            shiny::selectInput("angle_res", "Angle resolution",
+                               choices = c("1\u00b0" = "1", "2\u00b0" = "2",
+                                          "5\u00b0" = "5", "10\u00b0" = "10"),
+                               selected = "5"),
+            shiny::numericInput("buffer_dist", "Buffer distance (m)",
+                                value = 10, min = 1, max = 100, step = 1),
+            shiny::numericInput("max_fetch", "Max fetch cap (m)",
+                                value = 50000, min = 1000, max = 200000, step = 1000),
+            shiny::numericInput("wind_speed", "Wind speed (m/s)",
+                                value = 10, min = 0, max = 50, step = 0.5),
+            shiny::tags$hr(style = "margin: 10px 0;"),
+            shiny::tags$em("Exposure Thresholds", style = "color: #666;"),
+            shiny::numericInput("sheltered_m", "Sheltered (m)",
+                                value = 2500, min = 100, max = 50000, step = 100),
+            shiny::numericInput("exposed_m", "Exposed (m)",
+                                value = 5000, min = 100, max = 50000, step = 100),
+            shiny::numericInput("rel_sheltered", "Relative sheltered",
+                                value = 0.25, min = 0.01, max = 0.99, step = 0.05),
+            shiny::numericInput("rel_exposed", "Relative exposed",
+                                value = 0.50, min = 0.01, max = 0.99, step = 0.05)
+          ),
           shiny::hr(),
           shiny::actionButton("run_analysis", "Run Analysis",
                               class = "btn-primary btn-block",
@@ -605,9 +779,17 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::uiOutput("click_results"),
           shiny::hr(),
           shiny::h5("Color Legend:"),
-          shiny::p(style = "color: firebrick;", "Red: > 5 km (Exposed)"),
-          shiny::p(style = "color: gold;", "Gold: 2.5-5 km (Moderate)"),
-          shiny::p(style = "color: forestgreen;", "Green: < 2.5 km (Sheltered)"),
+          shiny::uiOutput("legend_text"),
+          shiny::tags$details(
+            shiny::tags$summary(shiny::strong("Display Settings")),
+            shiny::tags$br(),
+            shiny::selectInput("exposure_display", "Exposure classification",
+                               choices = c("Absolute (meters)" = "absolute",
+                                          "Relative (proportion)" = "relative"),
+                               selected = "absolute"),
+            shiny::actionButton("apply_display", "Apply Display Settings",
+                                class = "btn-sm btn-info")
+          ),
           shiny::hr(),
           shiny::h5("Download Results"),
           shiny::downloadButton("download_csv", "Download CSV", class = "btn-sm"),
@@ -704,6 +886,18 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       shiny::withProgress(message = "Processing...", value = 0, {
 
         tryCatch({
+          # Apply advanced settings before calculation
+          lakefetch_options(
+            angle_resolution_deg = as.numeric(input$angle_res),
+            buffer_distance_m = input$buffer_dist,
+            max_fetch_m = input$max_fetch,
+            default_wind_speed_ms = input$wind_speed,
+            exposure_sheltered_m = input$sheltered_m,
+            exposure_exposed_m = input$exposed_m,
+            exposure_relative_sheltered = input$rel_sheltered,
+            exposure_relative_exposed = input$rel_exposed
+          )
+
           # Step 1: Get lake boundaries
           shiny::incProgress(0.15, detail = "Downloading lake boundaries from OSM...")
           rv$lake_data <- get_lake_boundary(rv$sites)
@@ -778,11 +972,80 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       levels = c("Exposed", "Moderate", "Sheltered")
     )
 
-    ray_pal <- leaflet::colorBin(
-      palette = c("forestgreen", "gold", "firebrick"),
-      domain = c(0, 10000),
-      bins = c(0, 2500, 5000, 50000)
-    )
+    # Reactive ray palette based on thresholds
+    ray_pal_reactive <- shiny::reactive({
+      s_m <- input$sheltered_m
+      e_m <- input$exposed_m
+      leaflet::colorBin(
+        palette = c("forestgreen", "gold", "firebrick"),
+        domain = c(0, max(e_m * 2, 10000)),
+        bins = c(0, s_m, e_m, max(e_m * 10, 50000))
+      )
+    })
+
+    # Reactive legend text
+    output$legend_text <- shiny::renderUI({
+      s_m <- input$sheltered_m
+      e_m <- input$exposed_m
+      shiny::tagList(
+        shiny::p(style = "color: firebrick;",
+          sprintf("Red: > %.1f km (Exposed)", e_m / 1000)),
+        shiny::p(style = "color: gold;",
+          sprintf("Gold: %.1f-%.1f km (Moderate)", s_m / 1000, e_m / 1000)),
+        shiny::p(style = "color: forestgreen;",
+          sprintf("Green: < %.1f km (Sheltered)", s_m / 1000))
+      )
+    })
+
+    # Apply display settings — reclassify without recalculation
+    shiny::observeEvent(input$apply_display, {
+      req(rv$fetch_data)
+      mode <- input$exposure_display
+
+      s_m <- input$sheltered_m
+      e_m <- input$exposed_m
+      s_r <- input$rel_sheltered
+      e_r <- input$rel_exposed
+
+      if (mode == "absolute" && s_m >= e_m) {
+        shiny::showNotification("Sheltered threshold must be less than Exposed",
+                                 type = "warning")
+        return()
+      }
+      if (mode == "relative" && s_r >= e_r) {
+        shiny::showNotification("Sheltered proportion must be less than Exposed",
+                                 type = "warning")
+        return()
+      }
+
+      # Reclassify
+      rv$fetch_data$results <- reclassify_exposure(
+        rv$fetch_data$results,
+        sheltered_m = s_m, exposed_m = e_m,
+        rel_sheltered = s_r, rel_exposed = e_r
+      )
+
+      # Get active exposure column
+      if (mode == "relative" && "exposure_relative" %in% names(rv$fetch_data$results)) {
+        active_col <- rv$fetch_data$results$exposure_relative
+      } else {
+        active_col <- rv$fetch_data$results$exposure_category
+      }
+
+      # Update markers
+      results_wgs <- sf::st_transform(rv$fetch_data$results, 4326)
+      leaflet::leafletProxy("map") |>
+        leaflet::clearGroup("site_markers") |>
+        leaflet::addCircleMarkers(
+          data = results_wgs,
+          group = "site_markers",
+          radius = 6,
+          stroke = TRUE, color = "white", weight = 1.5,
+          fillOpacity = 0.9,
+          fillColor = exposure_pal(active_col),
+          layerId = ~Site
+        )
+    })
 
     # Render map
     output$map <- leaflet::renderLeaflet({
@@ -935,12 +1198,13 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
         )
         site_rays_wgs <- sf::st_transform(site_rays, 4326)
 
+        cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
           leaflet::clearGroup("rays") |>
           leaflet::addPolylines(
             data = site_rays_wgs,
             group = "rays",
-            color = ~ray_pal(Distance),
+            color = ~cur_ray_pal(Distance),
             weight = 2,
             opacity = 0.8,
             popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))
@@ -1022,12 +1286,12 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           sf::st_boundary(lake_poly)
         })
 
-        angle_res <- get_opt("angle_resolution_deg")
+        angle_res <- as.numeric(input$angle_res)
         angles <- seq(0, 360 - angle_res, by = angle_res)
 
         nudged_pt <- nudge_inward(
           click_pt_utm, lake_boundary, lake_poly,
-          get_opt("buffer_distance_m")
+          input$buffer_dist
         )
         nudged_sf <- sf::st_sf(
           Site = "Custom Point",
@@ -1036,15 +1300,15 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
         fetch_dists <- get_highres_fetch(nudged_sf, lake_boundary, lake_poly, angles)
 
-        # Calculate metrics using configured method
+        # Calculate metrics using settings
         fetch_mean <- mean(fetch_dists, na.rm = TRUE)
         fetch_max <- max(fetch_dists, na.rm = TRUE)
         fetch_matrix <- matrix(fetch_dists, nrow = 1)
         fetch_effective <- calc_effective_fetch(fetch_matrix, angles, input$fetch_method)[1]
-        # Use user-specified depth from input
-        orbital <- calc_orbital(fetch_effective, depth_m = input$water_depth)
-        sheltered_m <- get_opt("exposure_sheltered_m")
-        exposed_m <- get_opt("exposure_exposed_m")
+        orbital <- calc_orbital(fetch_effective, depth_m = input$water_depth,
+                                wind_speed = input$wind_speed)
+        sheltered_m <- input$sheltered_m
+        exposed_m <- input$exposed_m
         exposure <- if (fetch_effective < sheltered_m) "Sheltered" else if (fetch_effective > exposed_m) "Exposed" else "Moderate"
 
         pt_coords <- sf::st_coordinates(nudged_sf)
@@ -1082,13 +1346,14 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           "Sheltered" = "forestgreen"
         )
 
+        cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
           leaflet::clearGroup("rays") |>
           leaflet::clearGroup("custom_point") |>
           leaflet::addPolylines(
             data = rays_wgs,
             group = "rays",
-            color = ~ray_pal(Distance),
+            color = ~cur_ray_pal(Distance),
             weight = 2,
             opacity = 0.8,
             popup = ~sprintf("Angle: %d deg<br>Distance: %d m", Angle, round(Distance))

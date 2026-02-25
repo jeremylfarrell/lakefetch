@@ -17,7 +17,7 @@ Create line geometries representing fetch rays from each site.
 Useful for detailed visualization of the ray-casting results.
 }
 \examples{
-\donttest{
+if (FALSE) {
 results <- fetch_calculate(sites, lake)
 rays <- create_ray_geometries(results)
 

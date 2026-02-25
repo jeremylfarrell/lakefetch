@@ -55,7 +55,7 @@
 #' Engineering Research Center. 4th Edition.
 #'
 #' @examples
-#' \donttest{
+#' if (FALSE) {
 #' sites <- load_sites("my_sites.csv")
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)

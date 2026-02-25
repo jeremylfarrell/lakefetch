@@ -46,10 +46,6 @@ useful when your data uses non-standard column names that the auto-detection
 cannot find.
 }
 \examples{
-\donttest{
-# Load from CSV
-sites <- load_sites("my_lake_sites.csv")
-
 # Load from data frame
 df <- data.frame(
   Site = c("A", "B", "C"),
@@ -67,6 +63,5 @@ df2 <- data.frame(
 )
 sites <- load_sites(df2, lat_col = "y_coord", lon_col = "x_coord",
                     site_col = "sample_id", lake_col = "reservoir")
-}
 
 }

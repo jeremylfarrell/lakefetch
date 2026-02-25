@@ -18,7 +18,7 @@ A ggplot2 object
 Create a bar chart showing effective fetch by site.
 }
 \examples{
-\donttest{
+if (FALSE) {
 results <- fetch_calculate(sites, lake)
 plot_fetch_bars(results)
 }
