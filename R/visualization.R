@@ -12,7 +12,7 @@
 #' @return A ggplot2 object
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_map(results)
 #' }
@@ -66,7 +66,7 @@ plot_fetch_map <- function(fetch_data, title = "Fetch Analysis - Site Locations"
 #' @return A ggplot2 object
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_bars(results)
 #' }
@@ -115,13 +115,16 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #' @return Invisible NULL (creates base R plot)
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_rose(results, "Site1")
 #' }
 #'
 #' @export
 plot_fetch_rose <- function(fetch_data, site, title = NULL) {
+
+  oldpar <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(oldpar))
 
   results <- fetch_data$results
 
@@ -204,7 +207,7 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 #' @return An sf object with ray line geometries
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' results <- fetch_calculate(sites, lake)
 #' rays <- create_ray_geometries(results)
 #'
@@ -299,6 +302,8 @@ make_rose_plot_base64 <- function(site_row, site_name) {
   tmp_file <- tempfile(fileext = ".png")
 
   grDevices::png(tmp_file, width = 300, height = 300, bg = "transparent")
+  oldpar <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(oldpar), add = TRUE)
   graphics::par(mar = c(1, 1, 2, 1))
 
   # Convert to radians (0 = North, clockwise)

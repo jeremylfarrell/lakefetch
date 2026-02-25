@@ -38,7 +38,7 @@
 #' str(adirondack_sites)
 #'
 #' # Use with lakefetch
-#' \dontrun{
+#' \donttest{
 #' sites <- load_sites(adirondack_sites)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)
@@ -77,7 +77,7 @@
 #' print(example_lake)
 #'
 #' # Plot the lake
-#' \dontrun{
+#' \donttest{
 #' library(ggplot2)
 #' ggplot(example_lake) + geom_sf()
 #' }
@@ -118,7 +118,7 @@
 #' head(wisconsin_lakes)
 #'
 #' # Use with lakefetch
-#' \dontrun{
+#' \donttest{
 #' sites <- load_sites(wisconsin_lakes)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)

@@ -38,9 +38,9 @@ CSV file requirements:
 }
 }
 \examples{
-\dontrun{
-# Launch the upload app
-fetch_app_upload()
+if (interactive()) {
+  # Launch the upload app
+  fetch_app_upload()
 }
 
 }

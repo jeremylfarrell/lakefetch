@@ -20,8 +20,8 @@ library(sf)
 
 # Check for waver package
 if (!requireNamespace("waver", quietly = TRUE)) {
-  message("Installing waver package from CRAN...")
-  install.packages("waver")
+  stop("Package 'waver' required for this validation script.\n",
+       "Install with: install.packages(\"waver\")")
 }
 library(waver)
 

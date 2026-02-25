@@ -20,7 +20,7 @@ Invisible NULL (creates base R plot)
 Create a rose diagram showing directional fetch for a single site.
 }
 \examples{
-\dontrun{
+\donttest{
 results <- fetch_calculate(sites, lake)
 plot_fetch_rose(results, "Site1")
 }

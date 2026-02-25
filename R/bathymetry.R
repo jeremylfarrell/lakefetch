@@ -34,7 +34,7 @@
 #' mean_depth ~ 10.3 * area_km2^0.25
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # With user-provided depth
 #' depth <- get_lake_depth(lake_poly, user_depth = 8.5)
 #'
@@ -140,7 +140,7 @@ estimate_depth_empirical <- function(lake_area_km2) {
 #' @return fetch_results with added depth columns
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # After running fetch_calculate
 #' results <- fetch_calculate(sites, lake)
 #'

@@ -32,7 +32,7 @@ The input data must have a datetime column in POSIXct format or a format
 that can be parsed (ISO 8601, or common date-time formats).
 }
 \examples{
-\dontrun{
+\donttest{
 # After calculating fetch
 results <- fetch_calculate(sites, lake)
 

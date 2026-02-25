@@ -37,7 +37,7 @@
 #' cannot find.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Load from CSV
 #' sites <- load_sites("my_lake_sites.csv")
 #'

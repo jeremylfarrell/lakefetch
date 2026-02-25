@@ -22,7 +22,12 @@ There are currently no downstream dependencies for this package.
 
 ## Notes for CRAN reviewers
 
-This is the first submission of lakefetch to CRAN.
+Resubmission. Addressed reviewer feedback from Benjamin Altmann:
+
+* Software names in DESCRIPTION now in single quotes
+* Replaced `\dontrun{}` with `\donttest{}` / `if (interactive())`
+* Added `on.exit(par(oldpar))` to restore graphical parameters
+* Removed `install.packages()` calls from inst/validation/ scripts
 
 ### Package purpose
 
@@ -54,7 +59,7 @@ browsers. This is a known USGS server configuration.
 
 ### Examples
 
-Most examples use `\dontrun{}` because they require internet connectivity
-for API calls or launch interactive Shiny apps. The package includes
-built-in example datasets (`adirondack_sites`, `wisconsin_lakes`,
-`example_lake`) for offline testing.
+Examples that download data use `\donttest{}`. Interactive functions
+(shiny apps) use `if (interactive())`. The package includes built-in
+example datasets (`adirondack_sites`, `wisconsin_lakes`, `example_lake`)
+for offline testing.

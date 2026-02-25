@@ -14,8 +14,8 @@ library(sf)
 
 # Check for fetchR package
 if (!requireNamespace("fetchR", quietly = TRUE)) {
-  message("Installing fetchR package from CRAN...")
-  install.packages("fetchR", repos = "https://cloud.r-project.org")
+  stop("Package 'fetchR' required for this validation script.\n",
+       "Install with: install.packages(\"fetchR\")")
 }
 library(fetchR)
 

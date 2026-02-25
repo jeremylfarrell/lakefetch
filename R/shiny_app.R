@@ -26,11 +26,11 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
-#' sites <- load_sites("my_sites.csv")
-#' lake <- get_lake_boundary(sites)
-#' results <- fetch_calculate(sites, lake)
-#' fetch_app(results)
+#' if (interactive()) {
+#'   sites <- load_sites("my_sites.csv")
+#'   lake <- get_lake_boundary(sites)
+#'   results <- fetch_calculate(sites, lake)
+#'   fetch_app(results)
 #' }
 #'
 #' @export
@@ -531,9 +531,9 @@ fetch_app <- function(fetch_data, title = NULL) {
 #' }
 #'
 #' @examples
-#' \dontrun{
-#' # Launch the upload app
-#' fetch_app_upload()
+#' if (interactive()) {
+#'   # Launch the upload app
+#'   fetch_app_upload()
 #' }
 #'
 #' @export

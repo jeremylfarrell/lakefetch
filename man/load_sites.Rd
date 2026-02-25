@@ -46,7 +46,7 @@ useful when your data uses non-standard column names that the auto-detection
 cannot find.
 }
 \examples{
-\dontrun{
+\donttest{
 # Load from CSV
 sites <- load_sites("my_lake_sites.csv")
 

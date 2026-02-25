@@ -37,7 +37,7 @@ data(example_lake)
 print(example_lake)
 
 # Plot the lake
-\dontrun{
+\donttest{
 library(ggplot2)
 ggplot(example_lake) + geom_sf()
 }

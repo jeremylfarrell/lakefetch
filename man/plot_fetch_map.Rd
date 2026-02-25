@@ -18,7 +18,7 @@ A ggplot2 object
 Create a map showing site locations colored by exposure category.
 }
 \examples{
-\dontrun{
+\donttest{
 results <- fetch_calculate(sites, lake)
 plot_fetch_map(results)
 }

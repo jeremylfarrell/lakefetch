@@ -32,11 +32,11 @@ The app displays:
 }
 }
 \examples{
-\dontrun{
-sites <- load_sites("my_sites.csv")
-lake <- get_lake_boundary(sites)
-results <- fetch_calculate(sites, lake)
-fetch_app(results)
+if (interactive()) {
+  sites <- load_sites("my_sites.csv")
+  lake <- get_lake_boundary(sites)
+  results <- fetch_calculate(sites, lake)
+  fetch_app(results)
 }
 
 }
