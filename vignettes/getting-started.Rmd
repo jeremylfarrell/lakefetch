@@ -23,11 +23,8 @@ influences wave energy, sediment resuspension, and habitat characteristics.
 ## Installation
 
 ```{r install, eval = FALSE}
-# Install from GitHub
-# install.packages("devtools")
-devtools::install_github("jeremylfarrell/lakefetch")
+install.packages("lakefetch")
 
-# Required dependencies are installed automatically.
 # Optional packages for extra features:
 # install.packages("nhdplusTools")                      # NHD integration
 # install.packages(c("shiny", "leaflet", "base64enc"))  # Interactive app
