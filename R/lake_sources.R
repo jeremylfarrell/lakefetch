@@ -20,12 +20,13 @@
 #' based on the bounding box of the provided sites.
 #'
 #' @examples
-#' if (FALSE) {
-#' sites <- load_sites("my_sites.csv")
+#' \donttest{
+#' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+#' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
 #'
-#' # Or with a local file
-#' lake_data <- get_lake_boundary(sites, file = "lake_boundary.shp")
+#' # Or with a local shapefile
+#' # lake_data <- get_lake_boundary(sites, file = "lake_boundary.shp")
 #' }
 #'
 #' @export
@@ -99,7 +100,7 @@ extract_osm_polys <- function(osm_data) {
 query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3) {
   # Escape regex special characters in each name, then join with |
   escape_regex <- function(x) {
-    gsub("([.|()\\\\+*?\\[\\]^${}])", "\\\\\\1", x)
+    gsub("([.|()\\\\+*?\\[\\]^${}])", "\\\\\\1", x, perl = TRUE)
   }
   escaped <- vapply(names, escape_regex, character(1), USE.NAMES = FALSE)
   name_pattern <- paste(escaped, collapse = "|")
@@ -637,8 +638,9 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #' @return sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 #'
 #' @examples
-#' if (FALSE) {
-#' # After downloading lake boundaries
+#' \donttest{
+#' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+#' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
 #'
 #' # Assign sites to their containing lakes

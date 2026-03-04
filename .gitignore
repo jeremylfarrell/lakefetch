@@ -21,6 +21,7 @@
 # Data files (user-specific)
 *.csv
 !data-raw/*.csv
+!inst/extdata/*.csv
 
 # System files
 .DS_Store

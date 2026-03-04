@@ -26,12 +26,13 @@ Otherwise, the function downloads lake boundaries from OpenStreetMap
 based on the bounding box of the provided sites.
 }
 \examples{
-if (FALSE) {
-sites <- load_sites("my_sites.csv")
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
 lake_data <- get_lake_boundary(sites)
 
-# Or with a local file
-lake_data <- get_lake_boundary(sites, file = "lake_boundary.shp")
+# Or with a local shapefile
+# lake_data <- get_lake_boundary(sites, file = "lake_boundary.shp")
 }
 
 }

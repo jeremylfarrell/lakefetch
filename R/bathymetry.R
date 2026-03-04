@@ -34,13 +34,13 @@
 #' mean_depth ~ 10.3 * area_km2^0.25
 #'
 #' @examples
-#' if (FALSE) {
+#' data(example_lake)
+#'
 #' # With user-provided depth
-#' depth <- get_lake_depth(lake_poly, user_depth = 8.5)
+#' depth <- get_lake_depth(example_lake, user_depth = 8.5)
 #'
 #' # Estimate from lake area
-#' depth <- get_lake_depth(lake_poly)
-#' }
+#' depth <- get_lake_depth(example_lake)
 #'
 #' @references
 #' Messager, M.L., Lehner, B., Grill, G., Nedeva, I., Schmitt, O. (2016):
@@ -140,16 +140,18 @@ estimate_depth_empirical <- function(lake_area_km2) {
 #' @return fetch_results with added depth columns
 #'
 #' @examples
-#' if (FALSE) {
-#' # After running fetch_calculate
+#' \donttest{
+#' data(adirondack_sites)
+#' sites <- load_sites(adirondack_sites)
+#' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #'
 #' # Add depth estimates
 #' results$results <- add_lake_depth(results$results, results$lakes)
 #'
-#' # Or provide known depths
-#' depths <- c("12345" = 15.5)  # lake_osm_id = depth in meters
-#' results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
+#' # Or provide known depths (use an actual lake_osm_id from results)
+#' # depths <- c("12345" = 15.5)
+#' # results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
 #' }
 #'
 #' @export

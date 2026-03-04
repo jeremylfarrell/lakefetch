@@ -55,8 +55,9 @@
 #' Engineering Research Center. 4th Edition.
 #'
 #' @examples
-#' if (FALSE) {
-#' sites <- load_sites("my_sites.csv")
+#' \donttest{
+#' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+#' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #'
@@ -223,13 +224,29 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
   }
 
   # Process lakes (parallel if multiple lakes and parallel is available)
-  if (parallel_available() && length(lakes_with_sites) > 1) {
+  use_parallel <- parallel_available() && length(lakes_with_sites) > 1
+  cl <- NULL
+
+  if (use_parallel) {
     n_cores <- min(length(lakes_with_sites), max(1, parallel::detectCores() - 1))
+    # Respect R CMD check core limits (max 2 simultaneous clusters allowed)
+    if (nzchar(Sys.getenv("_R_CHECK_PACKAGE_NAME_"))) {
+      n_cores <- min(n_cores, 2L)
+    }
     message("Using parallel processing with ", n_cores, " cores for ",
             length(lakes_with_sites), " lakes")
 
-    cl <- parallel::makeCluster(n_cores)
+    cl <- tryCatch(
+      parallel::makeCluster(n_cores),
+      error = function(e) {
+        message("Parallel cluster unavailable, falling back to sequential: ", conditionMessage(e))
+        NULL
+      }
+    )
+    if (is.null(cl)) use_parallel <- FALSE
+  }
 
+  if (use_parallel) {
     # Export required functions and data
     parallel::clusterExport(cl, c(
       "calculate_fetch_single_lake", "get_highres_fetch", "nudge_inward",

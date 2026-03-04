@@ -20,8 +20,9 @@ sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 Perform spatial join to assign each site to its containing lake polygon.
 }
 \examples{
-if (FALSE) {
-# After downloading lake boundaries
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
 lake_data <- get_lake_boundary(sites)
 
 # Assign sites to their containing lakes

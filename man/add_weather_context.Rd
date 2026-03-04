@@ -32,11 +32,13 @@ The input data must have a datetime column in POSIXct format or a format
 that can be parsed (ISO 8601, or common date-time formats).
 }
 \examples{
-if (FALSE) {
-# After calculating fetch
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
+lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
 
-# Add datetime to your results
+# Add datetime to results
 results$results$datetime <- as.POSIXct("2024-07-15 14:00:00")
 
 # Add weather context

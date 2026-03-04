@@ -21,16 +21,18 @@ Looks up or estimates depth for each lake in the fetch results and
 adds depth columns.
 }
 \examples{
-if (FALSE) {
-# After running fetch_calculate
+\donttest{
+data(adirondack_sites)
+sites <- load_sites(adirondack_sites)
+lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
 
 # Add depth estimates
 results$results <- add_lake_depth(results$results, results$lakes)
 
-# Or provide known depths
-depths <- c("12345" = 15.5)  # lake_osm_id = depth in meters
-results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
+# Or provide known depths (use an actual lake_osm_id from results)
+# depths <- c("12345" = 15.5)
+# results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
 }
 
 }

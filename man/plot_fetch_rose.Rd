@@ -20,9 +20,12 @@ Invisible NULL (creates base R plot)
 Create a rose diagram showing directional fetch for a single site.
 }
 \examples{
-if (FALSE) {
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
+lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
-plot_fetch_rose(results, "Site1")
+plot_fetch_rose(results, results$results$Site[1])
 }
 
 }

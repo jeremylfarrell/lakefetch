@@ -37,8 +37,8 @@
 #' # View structure
 #' str(adirondack_sites)
 #'
-#' # Use with lakefetch
-#' if (FALSE) {
+#' # Use with lakefetch (requires internet connection)
+#' \donttest{
 #' sites <- load_sites(adirondack_sites)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)
@@ -117,8 +117,8 @@
 #' # View the data
 #' head(wisconsin_lakes)
 #'
-#' # Use with lakefetch
-#' if (FALSE) {
+#' # Use with lakefetch (requires internet connection)
+#' \donttest{
 #' sites <- load_sites(wisconsin_lakes)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)

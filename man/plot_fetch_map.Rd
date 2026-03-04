@@ -18,7 +18,10 @@ A ggplot2 object
 Create a map showing site locations colored by exposure category.
 }
 \examples{
-if (FALSE) {
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
+lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
 plot_fetch_map(results)
 }

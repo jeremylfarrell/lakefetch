@@ -68,8 +68,9 @@ For each site, the function:
 Exposure thresholds can be configured via \code{\link{lakefetch_options}}.
 }
 \examples{
-if (FALSE) {
-sites <- load_sites("my_sites.csv")
+\donttest{
+csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
+sites <- load_sites(csv_path)
 lake <- get_lake_boundary(sites)
 results <- fetch_calculate(sites, lake)
 
