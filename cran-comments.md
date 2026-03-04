@@ -1,38 +1,34 @@
+## Resubmission (v0.1.2)
+
+Addressing feedback from Konstanze Lauseker (second review):
+
+* Removed all `if(FALSE)` usage in `@examples` across all R files
+* Wrapped all lengthy examples involving network calls (OpenStreetMap, NHD,
+  weather APIs) in `\donttest{}`
+* Where possible, replaced with truly runnable examples (e.g., `get_lake_depth()`
+  using the bundled `example_lake` dataset, `load_sites()` using `system.file()`)
+* Added `inst/extdata/sample_sites.csv` as a small example data file; all
+  examples now reference it via
+  `system.file("extdata", "sample_sites.csv", package = "lakefetch")`
+
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
-NOTE: New submission. Possibly misspelled words (Hydrography, NHD,
-OpenStreetMap, hydrological) are correct domain-specific terms listed
-in inst/WORDLIST.
+NOTE: "Hydrography" and "hydrological" flagged as possibly misspelled —
+both are correct technical terms referring to the National Hydrography
+Dataset (NHD) from the USGS.
 
 ## Test environments
 
 * Local: Windows 11 x64 (build 26200), R 4.4.1
-* Win-builder: Windows Server 2022, R 4.5.2 Patched (2026-02-13)
-* Win-builder: Windows Server 2022, R-devel
-* R-hub: Ubuntu Linux (R-devel)
-* R-hub: Windows (R-devel)
-* R-hub: macOS ARM64 (R-devel)
-* Mac Builder: macOS 26.2, Apple M1, R-devel
+* Win-builder: Windows Server 2022, R-devel (2026-03-04)
 
 ## Downstream dependencies
 
 There are currently no downstream dependencies for this package.
 
 ## Notes for CRAN reviewers
-
-Resubmission. Addressed reviewer feedback from Benjamin Altmann:
-
-* Software names in DESCRIPTION now in single quotes
-* Replaced `\dontrun{}` with `if (FALSE)` / `if (interactive())`
-* Added `on.exit(par(oldpar))` to restore graphical parameters
-* Removed `install.packages()` calls from inst/validation/ scripts
-
-Additional changes since reviewer feedback:
-
-* Added interactive settings panels to both Shiny apps
-* Added missing relative exposure options to `.onLoad()`
 
 ### Package purpose
 
@@ -61,10 +57,3 @@ and users can alternatively provide local boundary files.
 The USGS National Hydrography Dataset URL (https://www.usgs.gov/national-hydrography)
 in DESCRIPTION returns HTTP 403 to automated checkers but is accessible in
 browsers. This is a known USGS server configuration.
-
-### Examples
-
-Examples requiring network access or pre-computed results use `if (FALSE)`.
-Interactive functions (shiny apps) use `if (interactive())`. The package
-includes built-in example datasets (`adirondack_sites`, `wisconsin_lakes`,
-`example_lake`) for offline testing, with runnable examples in `load_sites()`.
