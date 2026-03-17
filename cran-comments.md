@@ -20,7 +20,7 @@ Dataset (NHD) from the USGS.
 ## Test environments
 
 * Local: Windows 11 x64 (build 26200), R 4.4.1
-* Win-builder: Windows Server 2022, R-devel (2026-03-04)
+* Win-builder: Windows Server 2022, R-devel (2026-03-16 r89642)
 
 ## Downstream dependencies
 
