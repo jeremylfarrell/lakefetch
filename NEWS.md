@@ -1,3 +1,10 @@
+# lakefetch 0.1.3
+
+## Bug fixes
+
+* Fixed commented-out code in `@examples` for `add_lake_depth()` and
+  `get_lake_boundary()`. Examples now use runnable code throughout.
+
 # lakefetch 0.1.1
 
 ## New features

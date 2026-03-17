@@ -1,15 +1,13 @@
-## Resubmission (v0.1.2)
+## Resubmission (v0.1.3)
 
-Addressing feedback from Konstanze Lauseker (second review):
+Addressing feedback from Benjamin Altmann (third review):
 
-* Removed all `if(FALSE)` usage in `@examples` across all R files
-* Wrapped all lengthy examples involving network calls (OpenStreetMap, NHD,
-  weather APIs) in `\donttest{}`
-* Where possible, replaced with truly runnable examples (e.g., `get_lake_depth()`
-  using the bundled `example_lake` dataset, `load_sites()` using `system.file()`)
-* Added `inst/extdata/sample_sites.csv` as a small example data file; all
-  examples now reference it via
-  `system.file("extdata", "sample_sites.csv", package = "lakefetch")`
+* Removed all commented-out code lines from `@examples` in `add_lake_depth()`
+  and `get_lake_boundary()`. The `add_lake_depth()` example previously showed
+  user-supplied depths as commented-out pseudocode; this is now replaced with
+  runnable code using `lake_id <- results$lakes$osm_id[1]`. The
+  `get_lake_boundary()` example had a commented-out local-file alternative;
+  this line has been removed (the `file` argument is documented in `@param`).
 
 ## R CMD check results
 

@@ -30,9 +30,10 @@ results <- fetch_calculate(sites, lake)
 # Add depth estimates
 results$results <- add_lake_depth(results$results, results$lakes)
 
-# Or provide known depths (use an actual lake_osm_id from results)
-# depths <- c("12345" = 15.5)
-# results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
+# Or provide known depths using an actual lake_osm_id from results
+lake_id <- results$lakes$osm_id[1]
+depths <- setNames(15.5, lake_id)
+results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
 }
 
 }

@@ -425,7 +425,6 @@ detect_location_name <- function(sites_raw) {
 #'
 #' @examples
 #' sanitize_filename("Lake O'Brien (2024)")
-#' # Returns "Lake_OBrien_2024"
 #'
 #' @export
 sanitize_filename <- function(name) {

@@ -17,6 +17,5 @@ Remove or replace invalid filename characters.
 }
 \examples{
 sanitize_filename("Lake O'Brien (2024)")
-# Returns "Lake_OBrien_2024"
 
 }
