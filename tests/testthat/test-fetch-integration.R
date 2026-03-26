@@ -249,3 +249,91 @@ test_that("fetch_calculate with rectangular lake shows directional fetch variati
   # fetch_90 (east) and fetch_270 (west) should be >> fetch_0 (north) and fetch_180 (south)
   expect_true(res$fetch_max > res$fetch_mean * 1.5)
 })
+
+# --- Unmatched sites get NA fetch values ---
+
+test_that("fetch_calculate returns NA for unmatched sites", {
+  lake <- create_circular_lake(radius = 1000)
+  # One site inside, one site far away (unmatched)
+  site_inside <- create_site(500000, 4800000, name = "Inside", epsg = 32618)
+  site_outside <- create_site(510000, 4810000, name = "Outside", epsg = 32618)
+  sites_both <- rbind(site_inside, site_outside)
+
+  lake_data <- list(
+    all_lakes = lake,
+    sites = sites_both,
+    utm_epsg = 32618
+  )
+
+  expect_warning(
+    result <- fetch_calculate(
+      sites = NULL, lake = lake_data, depth_m = 5, add_context = FALSE
+    ),
+    "not matched"
+  )
+
+  # Should have 2 rows
+ expect_equal(nrow(result$results), 2)
+
+  # Inside site should have real fetch values
+  inside_row <- result$results[result$results$Site == "Inside", ]
+  expect_false(is.na(inside_row$fetch_effective))
+  expect_true(inside_row$fetch_effective > 0)
+
+  # Outside site should have NA fetch values
+  outside_row <- result$results[result$results$Site == "Outside", ]
+  expect_true(is.na(outside_row$fetch_effective))
+  expect_true(is.na(outside_row$fetch_mean))
+  expect_true(is.na(outside_row$fetch_max))
+  expect_true(is.na(outside_row$exposure_category))
+})
+
+test_that("fetch_calculate returns all NAs when no sites match any lake", {
+  lake <- create_circular_lake(radius = 1000)
+  # Site far from the lake
+  site_far <- create_site(510000, 4810000, name = "Far", epsg = 32618)
+
+  lake_data <- list(
+    all_lakes = lake,
+    sites = site_far,
+    utm_epsg = 32618
+  )
+
+  expect_warning(
+    result <- fetch_calculate(
+      sites = NULL, lake = lake_data, depth_m = 5, add_context = FALSE
+    ),
+    "not matched|All fetch values will be NA"
+  )
+
+  expect_equal(nrow(result$results), 1)
+  expect_true(is.na(result$results$fetch_effective))
+  expect_true(is.na(result$results$fetch_mean))
+})
+
+test_that("download_lake_osm returns empty lakes when no water found", {
+  # Mock download_lake_osm_single to return nothing
+  local_mocked_bindings(
+    download_lake_osm_single = function(bbox_vec, lake_names = NULL,
+                                         overpass_servers = NULL,
+                                         name_only = FALSE) {
+      list()
+    },
+    .package = "lakefetch"
+  )
+
+  sites <- data.frame(
+    Site = "Prairie_Pond",
+    latitude = 41.5,
+    longitude = -99.5
+  )
+  sites <- lakefetch::load_sites(sites)
+
+  expect_warning(
+    result <- lakefetch:::download_lake_osm(sites),
+    "No water bodies found"
+  )
+
+  expect_equal(nrow(result$all_lakes), 0)
+  expect_equal(nrow(result$sites), 1)
+})
