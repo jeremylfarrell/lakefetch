@@ -157,15 +157,10 @@ test_that("download_lake_osm warns and creates fallback when no water bodies fou
     .package = "lakefetch"
   )
 
-  expect_warning(
-    result <- lakefetch:::download_lake_osm(sites),
-    "No water"
+  expect_error(
+    lakefetch:::download_lake_osm(sites),
+    "No water bodies found"
   )
-
-  # Should create an approximate boundary fallback
-  expect_type(result, "list")
-  expect_true("all_lakes" %in% names(result))
-  expect_equal(result$all_lakes$osm_id, "fallback")
 })
 
 # --- download_lake_osm_single with mocked queries ---

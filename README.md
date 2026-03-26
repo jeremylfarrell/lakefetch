@@ -131,6 +131,12 @@ lake <- get_lake_boundary(sites, file = "my_lake_boundary.gpkg")
 results <- fetch_calculate(sites, lake)
 ```
 
+## Known Limitations
+
+- **Small water bodies not in OpenStreetMap**: Very small lakes and ponds (e.g., prairie ponds, stock tanks) may not be mapped in OpenStreetMap. If no boundary is found, `get_lake_boundary()` will error with a message suggesting that you supply your own boundary file via `get_lake_boundary(sites, file = "your_boundary.gpkg")`. Boundary files can be shapefiles, geopackages, or any format readable by `sf::st_read()`.
+
+- **OpenStreetMap data quality**: Lake boundaries in OSM vary in accuracy and completeness by region. For high-precision studies, consider using authoritative hydrography datasets (e.g., NHD for the US) as boundary sources.
+
 ## Similar Packages
 
 Several R packages calculate fetch or wave exposure, but they target different use cases:

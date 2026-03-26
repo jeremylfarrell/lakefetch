@@ -417,27 +417,10 @@ download_lake_osm <- function(sites_df) {
 
   # Check if we found ANY water bodies
   if (length(water_list) == 0) {
-    warning("No water bodies found in OpenStreetMap - creating approximate boundary")
-
-    # FALLBACK: Create a buffer around all points
-    sites_utm_temp <- sf::st_transform(sites_sf, utm_epsg)
-    buffer_dist <- 5000
-    buffered <- sf::st_buffer(sites_utm_temp, dist = buffer_dist)
-    lake_approx_utm <- sf::st_union(buffered)
-    lake_approx_utm <- sf::st_convex_hull(lake_approx_utm)
-
-    lake_approx_utm <- sf::st_sf(
-      name = "Approximate Boundary",
-      osm_id = "fallback",
-      area_km2 = as.numeric(sf::st_area(lake_approx_utm)) / 1e6,
-      geometry = sf::st_geometry(lake_approx_utm)
-    )
-
-    return(list(
-      all_lakes = lake_approx_utm,
-      sites = sites_utm_temp,
-      utm_epsg = utm_epsg
-    ))
+    stop("No water bodies found in OpenStreetMap for the given site coordinates. ",
+         "This typically means the lake is too small to be mapped in OSM ",
+         "(e.g., small prairie ponds). You can supply your own lake boundary ",
+         "using: get_lake_boundary(sites, file = 'your_boundary.gpkg')")
   }
 
   # Combine all water polygons
