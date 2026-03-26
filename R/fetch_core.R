@@ -191,15 +191,45 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
   lakes_with_sites <- unique(sites_with_lakes$lake_osm_id)
   lakes_with_sites <- lakes_with_sites[!is.na(lakes_with_sites)]
 
-  # Warn about unmatched sites
+  # Warn about unmatched sites - they will receive NA fetch values
   unmatched <- sites_with_lakes[is.na(sites_with_lakes$lake_osm_id), ]
   if (nrow(unmatched) > 0) {
-    warning("Skipping ", nrow(unmatched), " sites not matched to any lake: ",
-            paste(unmatched$Site, collapse = ", "))
+    warning(nrow(unmatched), " site(s) not matched to any lake boundary ",
+            "(fetch values will be NA): ",
+            paste(unmatched$Site, collapse = ", "),
+            ". These lakes may be too small for OpenStreetMap. ",
+            "You can supply your own boundary file using: ",
+            "get_lake_boundary(sites, file = 'your_boundary.gpkg')")
   }
 
   if (length(lakes_with_sites) == 0) {
-    stop("No sites matched to any lake. Cannot calculate fetch.")
+    warning("No sites matched to any lake. All fetch values will be NA.")
+    # Return results with all NAs
+    angle_res <- get_opt("angle_resolution_deg")
+    angles <- seq(0, 360 - angle_res, by = angle_res)
+    na_cols <- stats::setNames(
+      as.list(rep(NA_real_, length(angles))),
+      paste0("fetch_", angles)
+    )
+    na_results <- sites_with_lakes
+    for (col_name in names(na_cols)) {
+      na_results[[col_name]] <- NA_real_
+    }
+    na_results$fetch_mean <- NA_real_
+    na_results$fetch_max <- NA_real_
+    na_results$fetch_effective <- NA_real_
+    na_results$exposure_category <- NA_character_
+    na_results$orbital_velocity <- NA_real_
+
+    return(list(
+      results = na_results,
+      lakes = sf::st_sf(
+        osm_id = character(0), name = character(0),
+        area_km2 = numeric(0),
+        geometry = sf::st_sfc(crs = sf::st_crs(sites_with_lakes))
+      ),
+      angles = angles
+    ))
   }
 
   message("Processing ", length(lakes_with_sites), " lake(s)...")
@@ -288,6 +318,34 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
   all_results <- do.call(rbind, lapply(results_list, function(x) x$results))
   all_lake_polys <- do.call(rbind, lapply(results_list, function(x) x$lake))
   angles <- results_list[[1]]$angles
+
+  # Add unmatched sites back with NA fetch values
+  if (nrow(unmatched) > 0) {
+    na_rows <- unmatched
+    for (col_name in paste0("fetch_", angles)) {
+      na_rows[[col_name]] <- NA_real_
+    }
+    na_rows$fetch_mean <- NA_real_
+    na_rows$fetch_max <- NA_real_
+    na_rows$fetch_effective <- NA_real_
+    na_rows$exposure_category <- NA_character_
+    na_rows$orbital_velocity <- NA_real_
+
+    # Align columns before binding
+    missing_in_na <- setdiff(names(all_results), names(na_rows))
+    for (col_name in missing_in_na) {
+      na_rows[[col_name]] <- NA
+    }
+    missing_in_results <- setdiff(names(na_rows), names(all_results))
+    for (col_name in missing_in_results) {
+      all_results[[col_name]] <- NA
+    }
+
+    all_results <- rbind(all_results[, names(all_results)],
+                          na_rows[, names(all_results)])
+    message("  Note: ", nrow(unmatched),
+            " unmatched site(s) included with NA fetch values")
+  }
 
   return(list(
     results = all_results,

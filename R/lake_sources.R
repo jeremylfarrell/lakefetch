@@ -417,10 +417,25 @@ download_lake_osm <- function(sites_df) {
 
   # Check if we found ANY water bodies
   if (length(water_list) == 0) {
-    stop("No water bodies found in OpenStreetMap for the given site coordinates. ",
-         "This typically means the lake is too small to be mapped in OSM ",
-         "(e.g., small prairie ponds). You can supply your own lake boundary ",
-         "using: get_lake_boundary(sites, file = 'your_boundary.gpkg')")
+    warning("No water bodies found in OpenStreetMap for the given site coordinates. ",
+            "This typically means the lakes are too small to be mapped in OSM ",
+            "(e.g., small prairie ponds). Sites without lake boundaries will ",
+            "receive NA fetch values. You can supply your own boundary file ",
+            "using: get_lake_boundary(sites, file = 'your_boundary.gpkg')")
+
+    # Return empty lake set so downstream processing can assign NAs
+    sites_utm_temp <- sf::st_transform(sites_sf, utm_epsg)
+    empty_lakes <- sf::st_sf(
+      osm_id = character(0),
+      name = character(0),
+      area_km2 = numeric(0),
+      geometry = sf::st_sfc(crs = utm_epsg)
+    )
+    return(list(
+      all_lakes = empty_lakes,
+      sites = sites_utm_temp,
+      utm_epsg = utm_epsg
+    ))
   }
 
   # Combine all water polygons
