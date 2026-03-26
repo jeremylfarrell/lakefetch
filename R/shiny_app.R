@@ -717,6 +717,9 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::fileInput("file_upload", "Choose CSV File",
                            accept = c("text/csv", ".csv")),
           shiny::helpText("CSV must have columns starting with 'lat' and 'lon'"),
+          shiny::helpText("Maximum 50 sites for the web app. For larger datasets,",
+                          "use the lakefetch R package locally:",
+                          shiny::code("install.packages('lakefetch')")),
           shiny::helpText("Optional: include a 'datetime' column for weather analysis"),
           shiny::hr(),
           shiny::h5("Options"),
@@ -845,6 +848,20 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
       tryCatch({
         rv$sites <- load_sites(input$file_upload$datapath)
+
+        # Enforce 50-site limit for web app
+        if (nrow(rv$sites) > 50) {
+          rv$error <- paste0(
+            "Your file has ", nrow(rv$sites), " sites. ",
+            "The web app supports up to 50 sites. ",
+            "For larger datasets, install the lakefetch R package locally: ",
+            "install.packages('lakefetch')"
+          )
+          rv$status <- NULL
+          rv$sites <- NULL
+          rv$has_datetime <- FALSE
+          return()
+        }
 
         # Check if datetime column was detected
         rv$has_datetime <- "datetime" %in% names(rv$sites)

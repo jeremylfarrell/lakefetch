@@ -451,9 +451,9 @@ add_weather_context <- function(fetch_results, datetime_col = "datetime",
   all_metric_names <- unique(unlist(lapply(all_metrics, names)))
 
   for (metric_name in all_metric_names) {
-    values <- sapply(all_metrics, function(m) {
+    values <- vapply(all_metrics, function(m) {
       if (is.null(m[[metric_name]])) NA_real_ else m[[metric_name]]
-    })
+    }, numeric(1))
     fetch_results[[metric_name]] <- values
   }
 

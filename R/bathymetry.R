@@ -180,20 +180,20 @@ add_lake_depth <- function(fetch_results, lakes, user_depths = NULL) {
   }
 
   # Add depth columns to results
-  fetch_results$depth_mean_m <- sapply(fetch_results$lake_osm_id, function(id) {
+  fetch_results$depth_mean_m <- vapply(fetch_results$lake_osm_id, function(id) {
     if (is.na(id) || is.null(depth_lookup[[id]])) NA_real_
     else depth_lookup[[id]]$depth_mean
-  })
+  }, numeric(1))
 
-  fetch_results$depth_max_m <- sapply(fetch_results$lake_osm_id, function(id) {
+  fetch_results$depth_max_m <- vapply(fetch_results$lake_osm_id, function(id) {
     if (is.na(id) || is.null(depth_lookup[[id]])) NA_real_
     else depth_lookup[[id]]$depth_max
-  })
+  }, numeric(1))
 
-  fetch_results$depth_source <- sapply(fetch_results$lake_osm_id, function(id) {
+  fetch_results$depth_source <- vapply(fetch_results$lake_osm_id, function(id) {
     if (is.na(id) || is.null(depth_lookup[[id]])) NA_character_
     else depth_lookup[[id]]$source
-  })
+  }, character(1))
 
   return(fetch_results)
 }

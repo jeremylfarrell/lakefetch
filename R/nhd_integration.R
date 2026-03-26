@@ -152,13 +152,13 @@ add_lake_context <- function(fetch_results, lake_polygons, utm_epsg) {
       if (has_inlet) {
         fetch_results$inlet_count[i] <- nrow(outlets_inlets$inlets)
 
-        inlet_dists <- sapply(seq_len(nrow(outlets_inlets$inlets)), function(j) {
+        inlet_dists <- vapply(seq_len(nrow(outlets_inlets$inlets)), function(j) {
           calc_distance_bearing(
             sf::st_geometry(site_pt_wgs84),
             sf::st_geometry(outlets_inlets$inlets[j, ]),
             utm_epsg
           )$dist_m
-        })
+        }, numeric(1))
 
         nearest_inlet_idx <- which.min(inlet_dists)
         nearest_inlet <- outlets_inlets$inlets[nearest_inlet_idx, ]
@@ -226,12 +226,12 @@ match_lake_to_nhd <- function(lake_polygon_wgs84, nhd_waterbodies) {
   }
 
   if (length(intersects) > 1) {
-    overlaps <- sapply(intersects, function(i) {
+    overlaps <- vapply(intersects, function(i) {
       tryCatch({
         inter <- sf::st_intersection(lake_polygon_wgs84, nhd_waterbodies[i, ])
         as.numeric(sf::st_area(inter))
       }, error = function(e) 0)
-    })
+    }, numeric(1))
     best_match <- intersects[which.max(overlaps)]
   } else {
     best_match <- intersects[1]
@@ -270,7 +270,7 @@ get_outlets_inlets <- function(lake_nhd, lake_polygon_wgs84) {
     # Find flowlines that touch the lake boundary
     lake_boundary <- sf::st_boundary(lake_polygon_wgs84)
     touching <- sf::st_intersects(flowlines, sf::st_buffer(lake_boundary, 0.0001))
-    connected_idx <- which(sapply(touching, length) > 0)
+    connected_idx <- which(vapply(touching, length, integer(1)) > 0)
 
     if (length(connected_idx) == 0) {
       message("    No connected flowlines found")

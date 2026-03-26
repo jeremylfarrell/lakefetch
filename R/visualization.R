@@ -270,9 +270,9 @@ create_ray_geometries <- function(fetch_data) {
 
   # Convert to sf
   rays_df <- data.frame(
-    Site = sapply(all_rays, function(x) x$Site),
-    Angle = sapply(all_rays, function(x) x$Angle),
-    Distance = sapply(all_rays, function(x) x$Distance),
+    Site = vapply(all_rays, function(x) x$Site, character(1)),
+    Angle = vapply(all_rays, function(x) x$Angle, numeric(1)),
+    Distance = vapply(all_rays, function(x) x$Distance, numeric(1)),
     stringsAsFactors = FALSE
   )
 

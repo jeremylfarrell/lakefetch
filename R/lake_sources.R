@@ -700,14 +700,14 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
 
       # Find distance to the BOUNDARY (shoreline) of each lake, not just the polygon
       # This ensures we only match sites that are genuinely close to a lake edge
-      shoreline_distances <- sapply(seq_len(nrow(water_polygons)), function(j) {
+      shoreline_distances <- vapply(seq_len(nrow(water_polygons)), function(j) {
         lake_boundary <- tryCatch({
           sf::st_boundary(water_polygons[j, ])
         }, error = function(e) {
           sf::st_cast(water_polygons[j, ], "MULTILINESTRING")
         })
         as.numeric(sf::st_distance(site_geom, lake_boundary))
-      })
+      }, numeric(1))
 
       # Find lakes within tolerance distance of their shoreline
       within_tolerance <- which(shoreline_distances <= tolerance_m)
@@ -766,7 +766,7 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
           # Check if OSM name contains site lake name or vice versa
           partial_match <- which(
             grepl(site_lake_lower, osm_names, fixed = TRUE) |
-            sapply(osm_names, function(x) grepl(x, site_lake_lower, fixed = TRUE) && nchar(x) > 3)
+            vapply(osm_names, function(x) grepl(x, site_lake_lower, fixed = TRUE) && nchar(x) > 3, logical(1))
           )
           if (length(partial_match) > 0) {
             exact_match <- partial_match[1]

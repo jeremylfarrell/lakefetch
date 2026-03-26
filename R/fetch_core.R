@@ -257,7 +257,7 @@ calculate_fetch_multi_lake <- function(sites_with_lakes, all_lakes, utm_epsg,
                                    "fetch_method", "process_one_lake"),
                              envir = environment())
 
-    parallel::clusterEvalQ(cl, library(sf))
+    parallel::clusterEvalQ(cl, requireNamespace("sf", quietly = TRUE))
 
     results_list <- parallel::parLapply(cl, lakes_with_sites, function(lid) {
       process_one_lake(lid, all_lakes, sites_with_lakes, utm_epsg, fetch_method)
@@ -658,13 +658,13 @@ calc_effective_fetch <- function(fetch_matrix, angles, method = "top3") {
       radial_angles <- (max_angle + offsets) %% 360
 
       # Get fetch values at these angles (interpolate if needed)
-      radial_fetches <- sapply(radial_angles, function(a) {
+      radial_fetches <- vapply(radial_angles, function(a) {
         # Find closest angle in our measurements
         angle_diff <- abs(angles - a)
         angle_diff <- pmin(angle_diff, 360 - angle_diff)  # Handle wrap-around
         closest_idx <- which.min(angle_diff)
         fetch_row[closest_idx]
-      })
+      }, numeric(1))
 
       # Cosine weights (in radians)
       cos_weights <- cos(offsets * pi / 180)
