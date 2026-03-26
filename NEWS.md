@@ -49,7 +49,7 @@ Initial CRAN release.
 * Analytical validation against synthetic lakes with known geometry (0% error)
 * Literature validation against lakes with published morphometry (100% pass rate)
 * Edge case validation for islands, complex shorelines, and multiple islands (100% pass rate)
-* 79 unit tests via testthat (now 112)
+* 446 unit tests via testthat with 75% code coverage
 
 ## Documentation
 
