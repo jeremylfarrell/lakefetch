@@ -15,6 +15,10 @@ Calculate fetch (open water distance) and wave exposure metrics for freshwater l
 
 **lakefetch** fills this gap by providing an end-to-end R workflow for freshwater fetch analysis: it downloads lake boundary polygons from OpenStreetMap, calculates directional fetch via a ray-casting algorithm, classifies sites by wave exposure, and optionally integrates weather data to estimate cumulative wave energy. The package is designed for batch processing across many lakes and sites, making it practical for large-scale ecological and limnological studies.
 
+### Spatial Domain
+
+lakefetch operates on **two-dimensional geographic (curvilinear) coordinates**. Input data are expected as latitude/longitude pairs (WGS84, EPSG:4326) or as `sf` objects in any CRS. Internally, all spatial calculations are performed in a **projected Cartesian coordinate system** (UTM zone automatically determined from site locations) to ensure accurate distance measurements in meters. The package uses the [`sf`](https://r-spatial.github.io/sf/) package for all spatial operations and is compliant with PROJ6+ and WKT2 coordinate reference system representations.
+
 ## Installation
 
 Install from CRAN:
