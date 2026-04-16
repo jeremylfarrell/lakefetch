@@ -26,10 +26,9 @@ Otherwise, the function downloads lake boundaries from OpenStreetMap
 based on the bounding box of the provided sites.
 }
 \examples{
-\donttest{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 sites <- load_sites(csv_path)
 lake_data <- get_lake_boundary(sites)
-}
-
+\dontshow{\}) # examplesIf}
 }

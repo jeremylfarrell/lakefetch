@@ -54,8 +54,7 @@
 #' Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal
 #' Engineering Research Center. 4th Edition.
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
@@ -74,7 +73,6 @@
 #' # Find the location with maximum fetch in each lake
 #' results <- fetch_calculate(sites, lake, find_max_fetch = TRUE)
 #' results$max_fetch  # sf with max fetch location per lake
-#' }
 #'
 #' @export
 fetch_calculate <- function(sites, lake, depth_m = NULL, fetch_method = NULL,

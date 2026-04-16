@@ -38,5 +38,6 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/jeremylfarrell/lakefetch
+URL: https://jeremylfarrell.github.io/lakefetch/,
+    https://github.com/jeremylfarrell/lakefetch
 BugReports: https://github.com/jeremylfarrell/lakefetch/issues

@@ -43,6 +43,7 @@ ray-casting, and optionally integrates with NHD for hydrological context.
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://jeremylfarrell.github.io/lakefetch/}
   \item \url{https://github.com/jeremylfarrell/lakefetch}
   \item Report bugs at \url{https://github.com/jeremylfarrell/lakefetch/issues}
 }

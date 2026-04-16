@@ -32,7 +32,7 @@ The input data must have a datetime column in POSIXct format or a format
 that can be parsed (ISO 8601, or common date-time formats).
 }
 \examples{
-\donttest{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 sites <- load_sites(csv_path)
 lake <- get_lake_boundary(sites)
@@ -46,6 +46,5 @@ results_with_weather <- add_weather_context(
   results$results,
   datetime_col = "datetime"
 )
-}
-
+\dontshow{\}) # examplesIf}
 }

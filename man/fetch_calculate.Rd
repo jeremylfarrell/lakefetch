@@ -68,7 +68,7 @@ For each site, the function:
 Exposure thresholds can be configured via \code{\link{lakefetch_options}}.
 }
 \examples{
-\donttest{
+\dontshow{if (interactive()) withAutoprint(\{ # examplesIf}
 csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 sites <- load_sites(csv_path)
 lake <- get_lake_boundary(sites)
@@ -87,8 +87,7 @@ results$lakes    # lake polygons
 # Find the location with maximum fetch in each lake
 results <- fetch_calculate(sites, lake, find_max_fetch = TRUE)
 results$max_fetch  # sf with max fetch location per lake
-}
-
+\dontshow{\}) # examplesIf}
 }
 \references{
 Shore Protection Manual (1984). U.S. Army Corps of Engineers, Coastal

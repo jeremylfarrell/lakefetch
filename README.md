@@ -5,6 +5,7 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/lakefetch)](https://CRAN.R-project.org/package=lakefetch)
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![codecov](https://codecov.io/gh/jeremylfarrell/lakefetch/branch/main/graph/badge.svg)](https://app.codecov.io/gh/jeremylfarrell/lakefetch)
+[![pkgdown](https://github.com/jeremylfarrell/lakefetch/actions/workflows/pkgdown.yaml/badge.svg)](https://jeremylfarrell.github.io/lakefetch/)
 <!-- badges: end -->
 
 Calculate fetch (open water distance) and wave exposure metrics for freshwater lake sampling sites.

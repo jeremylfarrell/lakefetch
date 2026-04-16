@@ -37,12 +37,11 @@
 #' # View structure
 #' str(adirondack_sites)
 #'
+#' @examplesIf interactive()
 #' # Use with lakefetch (requires internet connection)
-#' \donttest{
 #' sites <- load_sites(adirondack_sites)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)
-#' }
 #'
 #' @source Synthetic data for demonstration purposes
 "adirondack_sites"
@@ -77,10 +76,8 @@
 #' print(example_lake)
 #'
 #' # Plot the lake
-#' \donttest{
 #' library(ggplot2)
 #' ggplot(example_lake) + geom_sf()
-#' }
 #'
 #' @source Synthetic data for demonstration and validation
 "example_lake"
@@ -117,12 +114,11 @@
 #' # View the data
 #' head(wisconsin_lakes)
 #'
+#' @examplesIf interactive()
 #' # Use with lakefetch (requires internet connection)
-#' \donttest{
 #' sites <- load_sites(wisconsin_lakes)
 #' lake_data <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake_data)
-#' }
 #'
 #' @source Synthetic data based on real lake locations
 "wisconsin_lakes"

@@ -320,8 +320,7 @@ calculate_cumulative_wave_energy <- function(fetch_by_direction, weather_df,
 #' The input data must have a datetime column in POSIXct format or a format
 #' that can be parsed (ISO 8601, or common date-time formats).
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
@@ -335,7 +334,6 @@ calculate_cumulative_wave_energy <- function(fetch_by_direction, weather_df,
 #'   results$results,
 #'   datetime_col = "datetime"
 #' )
-#' }
 #'
 #' @export
 add_weather_context <- function(fetch_results, datetime_col = "datetime",

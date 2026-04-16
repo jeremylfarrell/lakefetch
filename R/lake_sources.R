@@ -19,12 +19,10 @@
 #' Otherwise, the function downloads lake boundaries from OpenStreetMap
 #' based on the bounding box of the provided sites.
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
-#' }
 #'
 #' @export
 get_lake_boundary <- function(sites, file = NULL) {
@@ -632,8 +630,7 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #'
 #' @return sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
@@ -647,7 +644,6 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #'
 #' # Check assignments
 #' table(sites_assigned$lake_name)
-#' }
 #'
 #' @export
 assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) {

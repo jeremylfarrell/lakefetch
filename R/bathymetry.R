@@ -139,8 +139,7 @@ estimate_depth_empirical <- function(lake_area_km2) {
 #'
 #' @return fetch_results with added depth columns
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' data(adirondack_sites)
 #' sites <- load_sites(adirondack_sites)
 #' lake <- get_lake_boundary(sites)
@@ -153,7 +152,6 @@ estimate_depth_empirical <- function(lake_area_km2) {
 #' lake_id <- results$lakes$osm_id[1]
 #' depths <- setNames(15.5, lake_id)
 #' results$results <- add_lake_depth(results$results, results$lakes, user_depths = depths)
-#' }
 #'
 #' @export
 add_lake_depth <- function(fetch_results, lakes, user_depths = NULL) {

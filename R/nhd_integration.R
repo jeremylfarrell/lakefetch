@@ -34,14 +34,12 @@
 #'   \item lake_watershed_ratio: Lake area / watershed area
 #' }
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #' results_with_context <- add_lake_context(results$results, results$lakes, lake$utm_epsg)
-#' }
 #'
 #' @export
 add_lake_context <- function(fetch_results, lake_polygons, utm_epsg) {

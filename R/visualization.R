@@ -11,14 +11,12 @@
 #'
 #' @return A ggplot2 object
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_map(results)
-#' }
 #'
 #' @export
 plot_fetch_map <- function(fetch_data, title = "Fetch Analysis - Site Locations") {
@@ -68,14 +66,12 @@ plot_fetch_map <- function(fetch_data, title = "Fetch Analysis - Site Locations"
 #'
 #' @return A ggplot2 object
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_bars(results)
-#' }
 #'
 #' @export
 plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
@@ -120,14 +116,12 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #'
 #' @return Invisible NULL (creates base R plot)
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
 #' results <- fetch_calculate(sites, lake)
 #' plot_fetch_rose(results, results$results$Site[1])
-#' }
 #'
 #' @export
 plot_fetch_rose <- function(fetch_data, site, title = NULL) {
@@ -215,8 +209,7 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 #'
 #' @return An sf object with ray line geometries
 #'
-#' @examples
-#' \donttest{
+#' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake <- get_lake_boundary(sites)
@@ -227,7 +220,6 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 #' site_name <- results$results$Site[1]
 #' site_rays <- rays[rays$Site == site_name, ]
 #' ggplot2::ggplot() + ggplot2::geom_sf(data = site_rays, ggplot2::aes(color = Distance))
-#' }
 #'
 #' @export
 create_ray_geometries <- function(fetch_data) {
