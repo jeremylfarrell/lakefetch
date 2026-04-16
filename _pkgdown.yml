@@ -13,6 +13,10 @@ navbar:
       href: https://github.com/jeremylfarrell/lakefetch
 
 reference:
+  - title: Package
+    contents:
+      - lakefetch-package
+
   - title: Core Workflow
     desc: Main functions for calculating fetch
     contents:
