@@ -17,7 +17,7 @@ plot_fetch_rose(fetch_data, site, title = NULL)
 
 - site:
 
-  Site name to plot
+  Site name (character) or row index (integer) to plot
 
 - title:
 
