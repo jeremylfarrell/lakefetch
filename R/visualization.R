@@ -111,7 +111,7 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #' Create a rose diagram showing directional fetch for a single site.
 #'
 #' @param fetch_data Results from \code{\link{fetch_calculate}}
-#' @param site Site name to plot
+#' @param site Site name (character) or row index (integer) to plot
 #' @param title Optional plot title (defaults to site name)
 #'
 #' @return Invisible NULL (creates base R plot)
@@ -131,13 +131,26 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 
   results <- fetch_data$results
 
-  # Find the site
-  site_idx <- which(results$Site == site)
-  if (length(site_idx) == 0) {
-    stop("Site '", site, "' not found in results")
+  # Accept integer index or site name string
+  if (is.numeric(site) || is.integer(site)) {
+    idx <- as.integer(site)
+    if (idx < 1 || idx > nrow(results)) {
+      stop("Site index ", idx, " is out of range (1 to ", nrow(results), ")")
+    }
+    site_idx <- idx
+    if (is.null(title)) title <- results$Site[idx]
+    site <- results$Site[idx]
+  } else {
+    site_idx <- which(results$Site == site)
+    if (length(site_idx) == 0) {
+      available <- paste(results$Site, collapse = ", ")
+      stop("Site '", site, "' not found in results.\n",
+           "Available sites: ", available)
+    }
+    site_idx <- site_idx[1]
   }
 
-  site_row <- results[site_idx[1], ]
+  site_row <- results[site_idx, ]
 
   if (is.null(title)) {
     title <- site

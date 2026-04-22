@@ -542,6 +542,12 @@ get_highres_fetch <- function(pt, boundary, poly, angles) {
   max_d <- get_opt("max_fetch_m")
   validation_buffer <- get_opt("validation_buffer_m")
 
+  # If the site is not inside the lake polygon, fetch cannot be calculated
+  is_inside <- length(sf::st_intersects(pt, poly)[[1]]) > 0
+  if (!is_inside) {
+    return(rep(NA_real_, length(angles)))
+  }
+
   coords <- sf::st_coordinates(pt)
   x0 <- coords[1]
   y0 <- coords[2]

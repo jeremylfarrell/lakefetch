@@ -9,7 +9,7 @@ plot_fetch_rose(fetch_data, site, title = NULL)
 \arguments{
 \item{fetch_data}{Results from \code{\link{fetch_calculate}}}
 
-\item{site}{Site name to plot}
+\item{site}{Site name (character) or row index (integer) to plot}
 
 \item{title}{Optional plot title (defaults to site name)}
 }
