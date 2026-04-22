@@ -167,6 +167,24 @@ The package includes three built-in datasets:
 
 ## Citation
 
+If you use lakefetch in your research, please cite:
+
+Farrell J (2026). *lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points*. R package version 0.1.3, <https://github.com/jeremylfarrell/lakefetch>.
+
+Or in BibTeX format:
+
+```bibtex
+@Manual{,
+  title = {lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points},
+  author = {Jeremy Lynch Farrell},
+  year = {2026},
+  note = {R package version 0.1.3},
+  url = {https://github.com/jeremylfarrell/lakefetch},
+}
+```
+
+To generate the citation from R:
+
 ```r
 citation("lakefetch")
 ```

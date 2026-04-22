@@ -574,6 +574,43 @@ fetch_app <- function(fetch_data, title = NULL) {
           "Sheltered" = "forestgreen"
         )
 
+        # Generate rose diagram for custom point
+        # Build a synthetic site_row with fetch_* columns so make_rose_plot_base64 can use it
+        fetch_row <- as.data.frame(t(fetch_dists))
+        colnames(fetch_row) <- paste0("fetch_", angles)
+        fetch_row_sf <- sf::st_sf(fetch_row,
+                                   geometry = sf::st_sfc(nudged_pt, crs = utm_epsg))
+        rose_b64 <- tryCatch(
+          make_rose_plot_base64(fetch_row_sf, lake_name),
+          error = function(e) ""
+        )
+
+        # Explicitly set output$click_results here (same pattern as marker click handler)
+        # so the rose updates correctly even after a prior marker click overrode the binding
+        output$click_results <- shiny::renderUI({
+          shiny::tagList(
+            shiny::hr(),
+            shiny::h5("Custom Point Results:"),
+            shiny::p(shiny::strong("Lake: "), lake_name),
+            shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", fetch_mean)),
+            shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", fetch_max)),
+            shiny::p(shiny::strong("Effective Fetch: "),
+                     sprintf("%.1f km", fetch_effective / 1000)),
+            shiny::p(shiny::strong("Orbital Velocity: "),
+                     sprintf("%.3f m/s", orbital)),
+            shiny::p(shiny::strong("Exposure: "),
+              shiny::span(exposure, style = sprintf("color: %s; font-weight: bold;",
+                switch(exposure,
+                  "Exposed" = "firebrick",
+                  "Moderate" = "goldenrod",
+                  "Sheltered" = "forestgreen"
+                )
+              ))
+            ),
+            if (nzchar(rose_b64)) shiny::tags$img(src = rose_b64, width = "100%")
+          )
+        })
+
         # Update map with new point and rays
         cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
@@ -610,30 +647,8 @@ fetch_app <- function(fetch_data, title = NULL) {
       })
     })
 
-    # Display click results in sidebar
-    output$click_results <- shiny::renderUI({
-      res <- click_result()
-      if (is.null(res)) return(NULL)
-
-      shiny::tagList(
-        shiny::hr(),
-        shiny::h5("Custom Point Results:"),
-        shiny::p(shiny::strong("Lake: "), res$lake_name),
-        shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", res$fetch_mean)),
-        shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", res$fetch_max)),
-        shiny::p(shiny::strong("Effective Fetch: "), sprintf("%.1f km", res$fetch_effective / 1000)),
-        shiny::p(shiny::strong("Orbital Velocity: "), sprintf("%.3f m/s", res$orbital)),
-        shiny::p(shiny::strong("Exposure: "),
-          shiny::span(res$exposure, style = sprintf("color: %s; font-weight: bold;",
-            switch(res$exposure,
-              "Exposed" = "firebrick",
-              "Moderate" = "goldenrod",
-              "Sheltered" = "forestgreen"
-            )
-          ))
-        )
-      )
-    })
+    # Note: output$click_results is set directly inside observeEvent(input$map_click)
+    # and observeEvent(input$map_marker_click) so the rose diagram always updates correctly.
 
     # Clear custom point
     shiny::observeEvent(input$clear_click, {
@@ -1363,6 +1378,35 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           "Sheltered" = "forestgreen"
         )
 
+        # Generate rose for custom point and explicitly rebind output$click_results
+        fetch_row <- as.data.frame(t(fetch_dists))
+        colnames(fetch_row) <- paste0("fetch_", angles)
+        fetch_row_sf <- sf::st_sf(fetch_row,
+                                   geometry = sf::st_sfc(nudged_pt, crs = utm_epsg))
+        rose_b64 <- tryCatch(
+          make_rose_plot_base64(fetch_row_sf, lake_name),
+          error = function(e) ""
+        )
+
+        output$click_results <- shiny::renderUI({
+          shiny::tagList(
+            if (nzchar(rose_b64)) shiny::tags$img(src = rose_b64, width = "100%"),
+            shiny::hr(),
+            shiny::h5("Custom Point Results:"),
+            shiny::p(shiny::strong("Lake: "), lake_name),
+            shiny::p(shiny::strong("Effective Fetch: "),
+                     sprintf("%.1f km", fetch_effective / 1000)),
+            shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", fetch_mean)),
+            shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", fetch_max)),
+            shiny::p(shiny::strong("Orbital Velocity: "), sprintf("%.3f m/s", orbital)),
+            shiny::p(shiny::strong("Exposure: "),
+              shiny::span(exposure, style = sprintf("color: %s; font-weight: bold;",
+                exp_color
+              ))
+            )
+          )
+        })
+
         cur_ray_pal <- ray_pal_reactive()
         leaflet::leafletProxy("map") |>
           leaflet::clearGroup("rays") |>
@@ -1398,30 +1442,8 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       })
     })
 
-    # Display click results
-    output$click_results <- shiny::renderUI({
-      res <- rv$click_result
-      if (is.null(res)) return(NULL)
-
-      shiny::tagList(
-        shiny::hr(),
-        shiny::h5("Analysis Results:"),
-        shiny::p(shiny::strong("Lake: "), res$lake_name),
-        shiny::p(shiny::strong("Mean Fetch: "), sprintf("%.1f m", res$fetch_mean)),
-        shiny::p(shiny::strong("Max Fetch: "), sprintf("%.1f m", res$fetch_max)),
-        shiny::p(shiny::strong("Effective Fetch: "), sprintf("%.1f km", res$fetch_effective / 1000)),
-        shiny::p(shiny::strong("Orbital Velocity: "), sprintf("%.3f m/s", res$orbital)),
-        shiny::p(shiny::strong("Exposure: "),
-          shiny::span(res$exposure, style = sprintf("color: %s; font-weight: bold;",
-            switch(res$exposure,
-              "Exposed" = "firebrick",
-              "Moderate" = "goldenrod",
-              "Sheltered" = "forestgreen"
-            )
-          ))
-        )
-      )
-    })
+    # Note: output$click_results is set directly inside observeEvent(input$map_click)
+    # and observeEvent(input$map_marker_click) so the rose diagram always updates correctly.
 
     # Download CSV
     output$download_csv <- shiny::downloadHandler(
