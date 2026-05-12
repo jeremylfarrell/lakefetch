@@ -1,6 +1,7 @@
 # lakefetch
 
 <!-- badges: start -->
+[![Status at rOpenSci Software Peer Review](https://badges.ropensci.org/762_status.svg)](https://github.com/ropensci/software-review/issues/762)
 [![R-CMD-check](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml)
 [![CRAN status](https://www.r-pkg.org/badges/version/lakefetch)](https://CRAN.R-project.org/package=lakefetch)
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
