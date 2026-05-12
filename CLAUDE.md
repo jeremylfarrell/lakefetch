@@ -80,11 +80,11 @@ submitting to CRAN.
 
 ### Colleague Feedback Tracker
 
-| Colleague | Status   | Notes                                                                                               |
-|-----------|----------|-----------------------------------------------------------------------------------------------------|
-| Kait      | Received | Wind rose overlay idea (not implementing — out of scope for this package). App click wording fixed. |
-| Lucas     | Pending  | Kait forwarding to him                                                                              |
-| Fenly     | Pending  | Kait forwarding to them                                                                             |
+| Colleague | Status | Notes |
+|----|----|----|
+| Kait | Received | Wind rose overlay idea (not implementing — out of scope for this package). App click wording fixed. |
+| Lucas | Pending | Kait forwarding to him |
+| Fenly | Pending | Kait forwarding to them |
 
 ### Test Results
 
@@ -107,6 +107,7 @@ submitting to CRAN.
 ## Installation (for colleagues testing)
 
 ``` r
+
 # Install from GitHub
 install.packages("remotes")
 remotes::install_github("jeremylfarrell/lakefetch")
@@ -118,6 +119,7 @@ remotes::install_github("jeremylfarrell/lakefetch", dependencies = TRUE)
 ## Quick Start
 
 ``` r
+
 library(lakefetch)
 
 # Option 1: Use built-in example data
@@ -143,6 +145,7 @@ fetch_app(results)
 Users can run the app without any R coding - just upload a CSV:
 
 ``` r
+
 library(lakefetch)
 fetch_app_upload()
 ```
@@ -176,6 +179,7 @@ interactive map with fetch rays - Download results as CSV or GeoPackage
 ## Configuration
 
 ``` r
+
 # View current options
 lakefetch_options()
 
@@ -212,6 +216,7 @@ Example:
 When ready to submit:
 
 ``` r
+
 # Final check (optional)
 devtools::check()
 

@@ -26,6 +26,7 @@ provides guidelines for contributing to the project.
 ## Development Setup
 
 ``` r
+
 # Install development dependencies
 install.packages(c("devtools", "testthat", "roxygen2", "knitr", "rmarkdown"))
 

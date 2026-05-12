@@ -39,12 +39,14 @@ system representations.
 Install from CRAN:
 
 ``` r
+
 install.packages("lakefetch")
 ```
 
 Or install the development version from GitHub:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("jeremylfarrell/lakefetch")
 ```
@@ -52,6 +54,7 @@ remotes::install_github("jeremylfarrell/lakefetch")
 ## Quick Start
 
 ``` r
+
 library(lakefetch)
 
 # Load sampling sites from a CSV with latitude/longitude columns
@@ -82,13 +85,13 @@ results$results
 
 For each site, lakefetch returns:
 
-| Metric                  | Description                                                     |
-|-------------------------|-----------------------------------------------------------------|
-| `fetch_0` … `fetch_355` | Distance to shore (m) at each compass bearing                   |
-| `fetch_mean`            | Mean of all directional fetches                                 |
-| `fetch_max`             | Maximum directional fetch (longest open water distance)         |
-| `fetch_effective`       | Effective fetch (default: mean of 3 highest directional values) |
-| `exposure_class`        | Categorical exposure classification                             |
+| Metric | Description |
+|----|----|
+| `fetch_0` … `fetch_355` | Distance to shore (m) at each compass bearing |
+| `fetch_mean` | Mean of all directional fetches |
+| `fetch_max` | Maximum directional fetch (longest open water distance) |
+| `fetch_effective` | Effective fetch (default: mean of 3 highest directional values) |
+| `exposure_class` | Categorical exposure classification |
 
 Three effective fetch methods are available: `"top3"` (default),
 `"max"`, and `"cosine"` (the SPM/CERC cosine-weighted method from the
@@ -126,6 +129,7 @@ Shore Protection Manual).
 ## Example Workflow
 
 ``` r
+
 library(lakefetch)
 
 # Built-in example data
@@ -148,25 +152,26 @@ fetch_app(results)
 
 ## Key Functions
 
-| Function                                                                                               | Description                                                        |
-|--------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| [`load_sites()`](https://jeremylfarrell.github.io/lakefetch/reference/load_sites.md)                   | Load and validate sampling sites from CSV or data frame            |
-| [`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md)     | Download lake polygons from OSM or load from local file            |
-| [`fetch_calculate()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_calculate.md)         | Calculate directional fetch, effective fetch, and exposure class   |
-| [`add_lake_depth()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_depth.md)           | Estimate lake depth from surface area (Cael et al. 2017)           |
-| [`add_lake_context()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_context.md)       | Add NHD hydrological context (US lakes; requires nhdplusTools)     |
+| Function | Description |
+|----|----|
+| [`load_sites()`](https://jeremylfarrell.github.io/lakefetch/reference/load_sites.md) | Load and validate sampling sites from CSV or data frame |
+| [`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md) | Download lake polygons from OSM or load from local file |
+| [`fetch_calculate()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_calculate.md) | Calculate directional fetch, effective fetch, and exposure class |
+| [`add_lake_depth()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_depth.md) | Estimate lake depth from surface area (Cael et al. 2017) |
+| [`add_lake_context()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_context.md) | Add NHD hydrological context (US lakes; requires nhdplusTools) |
 | [`add_weather_context()`](https://jeremylfarrell.github.io/lakefetch/reference/add_weather_context.md) | Add historical weather and wave energy metrics (requires jsonlite) |
-| [`plot_fetch_map()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_map.md)           | Map of sites colored by exposure category                          |
-| [`plot_fetch_bars()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_bars.md)         | Bar chart of effective fetch by site                               |
-| [`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)         | Directional fetch rose diagram for a single site                   |
-| [`fetch_app()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app.md)                     | Interactive Shiny app for exploring fetch results                  |
-| [`fetch_app_upload()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app_upload.md)       | Standalone Shiny app with CSV upload (no coding required)          |
+| [`plot_fetch_map()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_map.md) | Map of sites colored by exposure category |
+| [`plot_fetch_bars()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_bars.md) | Bar chart of effective fetch by site |
+| [`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md) | Directional fetch rose diagram for a single site |
+| [`fetch_app()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app.md) | Interactive Shiny app for exploring fetch results |
+| [`fetch_app_upload()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app_upload.md) | Standalone Shiny app with CSV upload (no coding required) |
 
 ## Using Local Boundary Files
 
 If you have your own lake boundary as a shapefile or geopackage:
 
 ``` r
+
 lake <- get_lake_boundary(sites, file = "my_lake_boundary.gpkg")
 results <- fetch_calculate(sites, lake)
 ```
@@ -193,12 +198,12 @@ results <- fetch_calculate(sites, lake)
 Several R packages calculate fetch or wave exposure, but they target
 different use cases:
 
-| Package                                                     | Focus                               | Key Differences                                                                                                                                                                                                                |
-|-------------------------------------------------------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [fetchR](https://cran.r-project.org/package=fetchR)         | General fetch calculation           | Requires user-supplied coastline polygons; no automatic boundary download; single-polygon workflow; no batch multi-lake processing.                                                                                            |
-| [waver](https://cran.r-project.org/package=waver)           | Wave energy for coastal sites       | Designed for marine/coastal environments; uses a different fetch algorithm (wedge-based); no lake-specific features like NHD integration or depth estimation.                                                                  |
-| [windfetch](https://github.com/blasee/windfetch)            | Wind fetch for coastal environments | Successor to fetchR; coastal focus; no OpenStreetMap integration or multi-lake batch processing.                                                                                                                               |
-| [lakemorpho](https://cran.r-project.org/package=lakemorpho) | Lake morphometry metrics            | Calculates fetch as one of many morphometric parameters (shoreline development, max length/width, volume); single-lake focus; requires user-supplied polygon; no wave energy, weather integration, or exposure classification. |
+| Package | Focus | Key Differences |
+|----|----|----|
+| [fetchR](https://cran.r-project.org/package=fetchR) | General fetch calculation | Requires user-supplied coastline polygons; no automatic boundary download; single-polygon workflow; no batch multi-lake processing. |
+| [waver](https://cran.r-project.org/package=waver) | Wave energy for coastal sites | Designed for marine/coastal environments; uses a different fetch algorithm (wedge-based); no lake-specific features like NHD integration or depth estimation. |
+| [windfetch](https://github.com/blasee/windfetch) | Wind fetch for coastal environments | Successor to fetchR; coastal focus; no OpenStreetMap integration or multi-lake batch processing. |
+| [lakemorpho](https://cran.r-project.org/package=lakemorpho) | Lake morphometry metrics | Calculates fetch as one of many morphometric parameters (shoreline development, max length/width, volume); single-lake focus; requires user-supplied polygon; no wave energy, weather integration, or exposure classification. |
 
 **lakefetch** is distinguished by its focus on freshwater lakes,
 including: automatic lake boundary download from OpenStreetMap with
@@ -251,6 +256,7 @@ Or in BibTeX format:
 To generate the citation from R:
 
 ``` r
+
 citation("lakefetch")
 ```
 

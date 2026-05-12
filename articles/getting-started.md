@@ -10,6 +10,7 @@ and habitat characteristics.
 ## Installation
 
 ``` r
+
 install.packages("lakefetch")
 
 # Optional packages for extra features:
@@ -22,6 +23,7 @@ install.packages("lakefetch")
 ### 1. Load your site data
 
 ``` r
+
 library(lakefetch)
 
 # From CSV file
@@ -42,6 +44,7 @@ names starting with “lat” and “lon” are automatically detected.
 ### 2. Get lake boundary
 
 ``` r
+
 # Automatically download from OpenStreetMap
 lake <- get_lake_boundary(sites)
 
@@ -52,6 +55,7 @@ lake <- get_lake_boundary(sites, file = "lake_boundary.shp")
 ### 3. Calculate fetch
 
 ``` r
+
 results <- fetch_calculate(sites, lake)
 
 # View results
@@ -61,6 +65,7 @@ head(results$results)
 ### 4. Visualize
 
 ``` r
+
 # Map of sites
 plot_fetch_map(results)
 
@@ -104,6 +109,7 @@ Sites are classified based on effective fetch:
 Customize the calculation parameters:
 
 ``` r
+
 # View current options
 lakefetch_options()
 
@@ -128,6 +134,7 @@ from each site - Connectivity classification (Headwater, Drainage,
 Terminal, Isolated) - Outlet stream order - Watershed area
 
 ``` r
+
 # NHD context is added automatically if available
 results <- fetch_calculate(sites, lake, add_context = TRUE)
 
@@ -140,6 +147,7 @@ table(results$results$connectivity_class)
 If your sites span multiple lakes, lakefetch handles this automatically:
 
 ``` r
+
 # Sites are assigned to their containing lake polygon
 sites_with_lakes <- assign_sites_to_lakes(lake$sites, lake$all_lakes)
 
@@ -150,6 +158,7 @@ table(sites_with_lakes$lake_name)
 ## Exporting Results
 
 ``` r
+
 # To CSV (without geometry)
 write.csv(sf::st_drop_geometry(results$results),
           "fetch_results.csv", row.names = FALSE)

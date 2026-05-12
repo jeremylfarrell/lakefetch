@@ -23,17 +23,18 @@ rigorous test of algorithm correctness.
 
 ### Test Cases
 
-| Test                 | Geometry                        | Expected              | Result          |
-|----------------------|---------------------------------|-----------------------|-----------------|
-| Circular lake center | r=1000m, point at center        | 1000m all directions  | PASS (0% error) |
-| Circular lake edge   | r=1000m, point 800m from center | Min: 200m, Max: 1800m | PASS (0% error) |
-| Rectangular lake N/S | 2000x1000m, center point        | 500m                  | PASS (0% error) |
-| Rectangular lake E/W | 2000x1000m, center point        | 1000m                 | PASS (0% error) |
-| Effective fetch      | Circular center, top 3 mean     | 1000m                 | PASS (0% error) |
+| Test | Geometry | Expected | Result |
+|----|----|----|----|
+| Circular lake center | r=1000m, point at center | 1000m all directions | PASS (0% error) |
+| Circular lake edge | r=1000m, point 800m from center | Min: 200m, Max: 1800m | PASS (0% error) |
+| Rectangular lake N/S | 2000x1000m, center point | 500m | PASS (0% error) |
+| Rectangular lake E/W | 2000x1000m, center point | 1000m | PASS (0% error) |
+| Effective fetch | Circular center, top 3 mean | 1000m | PASS (0% error) |
 
 ### Running Analytical Validation
 
 ``` r
+
 source(system.file("validation", "validate_fetch.R", package = "lakefetch"))
 ```
 
@@ -66,6 +67,7 @@ demonstrating proper handling of very elongated lakes.
 ### Running Literature Validation
 
 ``` r
+
 source(system.file("validation", "validate_literature.R", package = "lakefetch"))
 ```
 
@@ -76,13 +78,13 @@ algorithm failures.
 
 ### Test Cases
 
-| Test              | Geometry                         | Key Finding                    | Result  |
-|-------------------|----------------------------------|--------------------------------|---------|
-| Central island    | Island at lake center            | Rays correctly stop at island  | PASS    |
-| Offset island     | Island 800m north of center      | North rays blocked at 500m     | PASS    |
-| Complex shoreline | Sinusoidal variation ±300m       | Fetch varies 1119-1881m        | PASS    |
-| Multiple islands  | 3 islands at different positions | Each blocks rays independently | PASS    |
-| Very large lake   | Lake Erie                        | OSM limitation\*               | SKIPPED |
+| Test | Geometry | Key Finding | Result |
+|----|----|----|----|
+| Central island | Island at lake center | Rays correctly stop at island | PASS |
+| Offset island | Island 800m north of center | North rays blocked at 500m | PASS |
+| Complex shoreline | Sinusoidal variation ±300m | Fetch varies 1119-1881m | PASS |
+| Multiple islands | 3 islands at different positions | Each blocks rays independently | PASS |
+| Very large lake | Lake Erie | OSM limitation\* | SKIPPED |
 
 \*Great Lakes require pre-downloaded shapefiles due to OSM bounding box
 limitations.
@@ -99,6 +101,7 @@ limitations.
 ### Running Edge Case Validation
 
 ``` r
+
 source(system.file("validation", "validate_edge_cases.R", package = "lakefetch"))
 ```
 
@@ -140,6 +143,7 @@ tests using the `testthat` framework:
 Run tests with:
 
 ``` r
+
 devtools::test()
 ```
 
