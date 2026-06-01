@@ -38,7 +38,7 @@ install.packages("lakefetch")
 library(lakefetch)
 
 # From CSV file
-sites <- load_sites("my_lake_sites.csv")
+sites <- load_sites(system.file("extdata", "sample_sites.csv", package = "lakefetch"))
 
 # Or create manually
 sites <- data.frame(

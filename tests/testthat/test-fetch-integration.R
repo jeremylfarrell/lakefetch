@@ -316,7 +316,7 @@ test_that("download_lake_osm returns empty lakes when no water found", {
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       list()
     },
     .package = "lakefetch"

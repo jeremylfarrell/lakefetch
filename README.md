@@ -42,7 +42,7 @@ remotes::install_github("jeremylfarrell/lakefetch")
 library(lakefetch)
 
 # Load sampling sites from a CSV with latitude/longitude columns
-sites <- load_sites("my_sites.csv")
+sites <- load_sites(system.file("extdata", "sample_sites.csv", package = "lakefetch"))
 
 # Download lake boundaries from OpenStreetMap
 lake <- get_lake_boundary(sites)
@@ -58,7 +58,7 @@ results$results
 
 1. **Load sites** from a CSV or data frame containing latitude, longitude, and optional site names.
 2. **Get lake boundaries** automatically from OpenStreetMap, or load your own shapefiles/geopackages.
-3. **Calculate fetch** by casting rays from each site outward at regular angular intervals (default 5 degrees) and measuring the distance to the nearest shoreline in each direction.
+3. **Calculate fetch** by casting rays from each site outward at regular angular intervals (default 5 degrees, configurable via `lakefetch_options(angle_resolution_deg = 10)`) and measuring the distance to the nearest shoreline in each direction.
 4. **Classify exposure** based on effective fetch: Sheltered (< 2.5 km), Moderate (2.5--5 km), or Exposed (> 5 km). Thresholds are configurable.
 
 For each site, lakefetch returns:
@@ -196,11 +196,11 @@ This package was developed collaboratively with [Claude](https://claude.ai) (Ant
 
 ## Contributing
 
-Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
+Contributions are welcome. Please see [CONTRIBUTING.md](https://github.com/jeremylfarrell/lakefetch/blob/main/CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
 
 ## Code of Conduct
 
-Please note that the lakefetch project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+Please note that the lakefetch project is released with a [Contributor Code of Conduct](https://github.com/jeremylfarrell/lakefetch/blob/main/CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
 
 ## License
 

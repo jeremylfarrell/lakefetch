@@ -37,3 +37,10 @@ Thumbs.db
 
 # Working/development files
 /working/
+
+# Stale package duplicate / deployment artifacts (not part of source tree)
+/pkg/
+/shinyapps/
+/rsconnect/
+Rplots.pdf
+.claude/

@@ -28,10 +28,13 @@ plot_fetch_map <- function(fetch_data, title = "Fetch Analysis - Site Locations"
   # Color palette for exposure categories
   exposure_colors <- c("Exposed" = "#D73027", "Moderate" = "#FEE08B", "Sheltered" = "#1A9850")
 
-  # Get bounding box
-  bbox <- sf::st_bbox(results_wgs)
-  xlim <- c(bbox["xmin"] - 0.02, bbox["xmax"] + 0.02)
-  ylim <- c(bbox["ymin"] - 0.02, bbox["ymax"] + 0.02)
+  # Get bounding box from both sites and lake polygons so full lakes are shown
+  bbox_sites <- sf::st_bbox(results_wgs)
+  bbox_lakes <- sf::st_bbox(lakes_wgs)
+  xlim <- c(min(bbox_sites["xmin"], bbox_lakes["xmin"]) - 0.02,
+            max(bbox_sites["xmax"], bbox_lakes["xmax"]) + 0.02)
+  ylim <- c(min(bbox_sites["ymin"], bbox_lakes["ymin"]) - 0.02,
+            max(bbox_sites["ymax"], bbox_lakes["ymax"]) + 0.02)
 
   # Create subtitle
   n_sites <- nrow(results_wgs)

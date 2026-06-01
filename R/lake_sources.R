@@ -8,6 +8,15 @@
 #'
 #' @param sites A data.frame with latitude and longitude columns, or an sf object.
 #' @param file Optional file path to a shapefile or geopackage with lake boundaries.
+#' @param timeout Integer; Overpass API query timeout in seconds. Default is 90.
+#'   Increase for very large lakes (e.g., \code{timeout = 300} for Mälaren or
+#'   Great Lakes) or when server load is high.
+#' @param simplify_tolerance_m Numeric; if greater than 0, simplify lake
+#'   polygons with \code{sf::st_simplify(dTolerance = simplify_tolerance_m)}
+#'   (in meters, applied in the UTM projection). Useful for very large or
+#'   complex lakes where an exact coastline is not needed and a coarser
+#'   polygon greatly speeds up fetch ray-casting. Typical values: 50-500 m
+#'   for large lakes (e.g., Mälaren, Vättern). Default is 0 (no simplification).
 #'
 #' @return A list with elements:
 #'   \item{all_lakes}{sf object with lake polygons in UTM projection}
@@ -19,18 +28,58 @@
 #' Otherwise, the function downloads lake boundaries from OpenStreetMap
 #' based on the bounding box of the provided sites.
 #'
+#' For very large lakes (> ~500 km\eqn{^2}), the default 90-second Overpass
+#' API timeout may be exceeded. Use \code{timeout = 300} or higher in those
+#' cases. For lakes with very complex shorelines (e.g., Mälaren, Vättern,
+#' Võrtsjärv), additionally pass \code{simplify_tolerance_m = 100} (or higher)
+#' to coarsen the polygon and speed up downstream fetch calculations.
+#'
 #' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
 #' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
 #'
+#' # For very large lakes, increase the timeout
+#' lake_data <- get_lake_boundary(sites, timeout = 300)
+#'
+#' # For large/complex lakes, also coarsen the shoreline
+#' lake_data <- get_lake_boundary(sites, timeout = 300,
+#'                                simplify_tolerance_m = 100)
+#'
 #' @export
-get_lake_boundary <- function(sites, file = NULL) {
-  if (!is.null(file)) {
-    return(load_lake_file(sites, file))
+get_lake_boundary <- function(sites, file = NULL, timeout = 90,
+                              simplify_tolerance_m = 0) {
+  result <- if (!is.null(file)) {
+    load_lake_file(sites, file)
   } else {
-    return(download_lake_osm(sites))
+    download_lake_osm(sites, timeout = timeout)
   }
+
+  if (isTRUE(simplify_tolerance_m > 0) &&
+      !is.null(result$all_lakes) && nrow(result$all_lakes) > 0) {
+    message("Simplifying lake polygons (dTolerance = ",
+            simplify_tolerance_m, " m)...")
+    n_before <- sum(vapply(sf::st_geometry(result$all_lakes),
+                           function(g) length(unlist(g)), integer(1))) / 2
+    simplified <- sf::st_simplify(result$all_lakes,
+                                   dTolerance = simplify_tolerance_m,
+                                   preserveTopology = TRUE)
+    # Repair any geometries that simplification rendered invalid/empty
+    not_empty <- !sf::st_is_empty(simplified)
+    simplified <- simplified[not_empty, ]
+    bad <- !sf::st_is_valid(simplified)
+    if (any(bad)) {
+      simplified[bad, ] <- sf::st_make_valid(simplified[bad, ])
+    }
+    n_after <- sum(vapply(sf::st_geometry(simplified),
+                          function(g) length(unlist(g)), integer(1))) / 2
+    message("  Vertices: ", round(n_before), " -> ", round(n_after),
+            " (", round(100 * (1 - n_after / max(n_before, 1)), 1),
+            "% reduction)")
+    result$all_lakes <- simplified
+  }
+
+  return(result)
 }
 
 #' Group Sites into Spatial Clusters
@@ -92,7 +141,8 @@ extract_osm_polys <- function(osm_data) {
 #' @param max_attempts Maximum retry attempts
 #' @return osmdata result or NULL
 #' @noRd
-query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3) {
+query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3,
+                               timeout = 120) {
   # Escape regex special characters in each name, then join with |
   escape_regex <- function(x) {
     gsub("([.|()\\\\+*?\\[\\]^${}])", "\\\\\\1", x, perl = TRUE)
@@ -100,12 +150,33 @@ query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3) {
   escaped <- vapply(names, escape_regex, character(1), USE.NAMES = FALSE)
   name_pattern <- paste(escaped, collapse = "|")
 
+  # Overpass returns features whose NODES fall inside the bbox. For a small
+  # bbox sitting inside a huge lake (e.g., a single point in Malaren) the
+  # lake's polygon nodes are far outside the bbox and nothing comes back.
+  # Because the name filter is already very selective, we can safely expand
+  # the bbox to a much wider area without risking a flood of unrelated
+  # results. Expand to at least 1.5 degrees in each dimension, centered on
+  # the original bbox.
+  span_x <- as.numeric(bbox["right"] - bbox["left"])
+  span_y <- as.numeric(bbox["top"] - bbox["bottom"])
+  min_span <- 1.5
+  if (is.finite(span_x) && span_x < min_span) {
+    cx <- as.numeric(bbox["left"] + bbox["right"]) / 2
+    bbox["left"]  <- cx - min_span / 2
+    bbox["right"] <- cx + min_span / 2
+  }
+  if (is.finite(span_y) && span_y < min_span) {
+    cy <- as.numeric(bbox["bottom"] + bbox["top"]) / 2
+    bbox["bottom"] <- cy - min_span / 2
+    bbox["top"]    <- cy + min_span / 2
+  }
+
   for (attempt in seq_len(max_attempts)) {
     server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
 
     tryCatch({
       osmdata::set_overpass_url(server)
-      osm_query <- osmdata::opq(bbox = bbox, timeout = 120)
+      osm_query <- osmdata::opq(bbox = bbox, timeout = timeout)
       osm_query <- osmdata::add_osm_feature(osm_query,
                                              key = "natural", value = "water")
       osm_query <- osmdata::add_osm_feature(osm_query,
@@ -148,7 +219,8 @@ query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3) {
 #' @noRd
 download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
                                      overpass_servers = NULL,
-                                     name_only = FALSE) {
+                                     name_only = FALSE,
+                                     timeout = 90) {
   if (is.null(overpass_servers)) {
     overpass_servers <- c(
       "https://overpass-api.de/api/interpreter",
@@ -164,7 +236,7 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
 
       tryCatch({
         osmdata::set_overpass_url(server)
-        osm_query <- osmdata::opq(bbox = bbox, timeout = 90)
+        osm_query <- osmdata::opq(bbox = bbox, timeout = timeout)
         osm_query <- osmdata::add_osm_feature(osm_query, key = key, value = value)
         result <- osmdata::osmdata_sf(osm_query)
         osmdata::set_overpass_url(overpass_servers[1])
@@ -199,7 +271,8 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
       message("    Trying name-filtered query for: ",
               paste(lake_names, collapse = ", "))
       for (lname in lake_names) {
-        osm_result <- query_osm_by_name(bbox_vec, lname, overpass_servers)
+        osm_result <- query_osm_by_name(bbox_vec, lname, overpass_servers,
+                                         timeout = max(timeout, 120))
         if (!is.null(osm_result)) {
           name_polys <- extract_osm_polys(osm_result)
           if (length(name_polys) > 0) {
@@ -242,11 +315,12 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
 #' world's water bodies.
 #'
 #' @param sites_df Data frame with latitude and longitude columns
+#' @param timeout Integer; Overpass API query timeout in seconds (default 90)
 #'
 #' @return A list with all_lakes, sites, and utm_epsg
 #'
 #' @noRd
-download_lake_osm <- function(sites_df) {
+download_lake_osm <- function(sites_df, timeout = 90) {
 
   message("Converting to spatial format...")
 
@@ -307,7 +381,7 @@ download_lake_osm <- function(sites_df) {
     }
 
     water_list <- download_lake_osm_single(bbox_vec, cluster_lake_names,
-                                           overpass_servers)
+                                           overpass_servers, timeout = timeout)
   } else {
     # --- Large spread: per-cluster small bbox queries ---
     # Each cluster gets a tiny bbox (~0.1 degree) and a single natural=water
@@ -578,7 +652,9 @@ load_lake_file <- function(sites_df, lake_file_path) {
   # Load lake shapefile
   lake_wgs84 <- sf::st_read(lake_file_path, quiet = TRUE)
 
-  if (!sf::st_crs(lake_wgs84)$input %in% c("EPSG:4326", "WGS 84")) {
+  # Robustly check if already in WGS84; compare CRS objects rather than
+  # relying on the $input string, which varies across sf/PROJ versions
+  if (!isTRUE(sf::st_crs(lake_wgs84) == sf::st_crs(4326))) {
     lake_wgs84 <- sf::st_transform(lake_wgs84, 4326)
   }
 
@@ -776,8 +852,11 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
           matched_count <- 0
           skipped_sites <- character(0)
           for (idx in site_indices) {
-            site_dist <- as.numeric(sf::st_distance(sf::st_geometry(sites_sf)[idx], lake_match))
-            if (site_dist <= name_match_tolerance) {
+            site_dist <- tryCatch(
+              as.numeric(sf::st_distance(sf::st_geometry(sites_sf)[idx], lake_match)),
+              error = function(e) NA_real_
+            )
+            if (!is.na(site_dist) && site_dist <= name_match_tolerance) {
               sites_sf$lake_osm_id[idx] <- lake_match$osm_id
               sites_sf$lake_name[idx] <- lake_match$name
               if ("area_km2" %in% names(lake_match)) {

@@ -450,3 +450,157 @@ test_that("load_lake_file handles multipolygon geometry", {
 
   unlink(tmp_gpkg)
 })
+
+# --- get_lake_boundary new arguments: simplify_tolerance_m, timeout ---
+
+test_that("simplify_tolerance_m = 0 leaves polygon vertex count unchanged", {
+  # Create a polygon with many vertices so simplification has something to do
+  n <- 60
+  theta <- seq(0, 2 * pi, length.out = n + 1)[-(n + 1)]
+  cx <- -74; cy <- 43; r <- 0.05
+  # Add small perturbation so the ring isn't a perfect circle
+  set.seed(42)
+  ring_x <- cx + r * cos(theta) + rnorm(n, sd = 0.0005)
+  ring_y <- cy + r * sin(theta) + rnorm(n, sd = 0.0005)
+  ring <- cbind(c(ring_x, ring_x[1]), c(ring_y, ring_y[1]))
+
+  lake_wgs84 <- sf::st_sf(
+    name = "TestLake",
+    geometry = sf::st_sfc(sf::st_polygon(list(ring)), crs = 4326)
+  )
+
+  tmp_gpkg <- tempfile(fileext = ".gpkg")
+  sf::st_write(lake_wgs84, tmp_gpkg, quiet = TRUE)
+
+  site_sf <- sf::st_sf(
+    Site = "Test",
+    geometry = sf::st_sfc(sf::st_point(c(cx, cy)), crs = 4326)
+  )
+
+  raw <- lakefetch::get_lake_boundary(site_sf, file = tmp_gpkg,
+                                       simplify_tolerance_m = 0)
+  v_raw <- length(unlist(sf::st_geometry(raw$all_lakes))) / 2
+  expect_equal(v_raw, n + 1)  # ring close-point makes it n + 1 coords
+
+  unlink(tmp_gpkg)
+})
+
+test_that("simplify_tolerance_m > 0 reduces polygon vertex count", {
+  n <- 60
+  theta <- seq(0, 2 * pi, length.out = n + 1)[-(n + 1)]
+  cx <- -74; cy <- 43; r <- 0.05
+  set.seed(42)
+  ring_x <- cx + r * cos(theta) + rnorm(n, sd = 0.0005)
+  ring_y <- cy + r * sin(theta) + rnorm(n, sd = 0.0005)
+  ring <- cbind(c(ring_x, ring_x[1]), c(ring_y, ring_y[1]))
+
+  lake_wgs84 <- sf::st_sf(
+    name = "TestLake",
+    geometry = sf::st_sfc(sf::st_polygon(list(ring)), crs = 4326)
+  )
+
+  tmp_gpkg <- tempfile(fileext = ".gpkg")
+  sf::st_write(lake_wgs84, tmp_gpkg, quiet = TRUE)
+
+  site_sf <- sf::st_sf(
+    Site = "Test",
+    geometry = sf::st_sfc(sf::st_point(c(cx, cy)), crs = 4326)
+  )
+
+  raw  <- lakefetch::get_lake_boundary(site_sf, file = tmp_gpkg,
+                                        simplify_tolerance_m = 0)
+  simp <- lakefetch::get_lake_boundary(site_sf, file = tmp_gpkg,
+                                        simplify_tolerance_m = 500)
+
+  v_raw  <- length(unlist(sf::st_geometry(raw$all_lakes))) / 2
+  v_simp <- length(unlist(sf::st_geometry(simp$all_lakes))) / 2
+
+  expect_lt(v_simp, v_raw)
+  expect_gt(v_simp, 3)  # Still a valid polygon
+
+  # Simplified polygon must still be valid sf geometry
+  expect_true(all(sf::st_is_valid(simp$all_lakes)))
+
+  unlink(tmp_gpkg)
+})
+
+test_that("simplify_tolerance_m preserves area roughly (within 5%)", {
+  # Confirm simplification doesn't drastically distort area for sensible tols
+  n <- 60
+  theta <- seq(0, 2 * pi, length.out = n + 1)[-(n + 1)]
+  cx <- -74; cy <- 43; r <- 0.05
+  set.seed(42)
+  ring_x <- cx + r * cos(theta) + rnorm(n, sd = 0.0005)
+  ring_y <- cy + r * sin(theta) + rnorm(n, sd = 0.0005)
+  ring <- cbind(c(ring_x, ring_x[1]), c(ring_y, ring_y[1]))
+
+  lake_wgs84 <- sf::st_sf(
+    name = "TestLake",
+    geometry = sf::st_sfc(sf::st_polygon(list(ring)), crs = 4326)
+  )
+
+  tmp_gpkg <- tempfile(fileext = ".gpkg")
+  sf::st_write(lake_wgs84, tmp_gpkg, quiet = TRUE)
+
+  site_sf <- sf::st_sf(
+    Site = "Test",
+    geometry = sf::st_sfc(sf::st_point(c(cx, cy)), crs = 4326)
+  )
+
+  raw  <- lakefetch::get_lake_boundary(site_sf, file = tmp_gpkg,
+                                        simplify_tolerance_m = 0)
+  simp <- lakefetch::get_lake_boundary(site_sf, file = tmp_gpkg,
+                                        simplify_tolerance_m = 100)
+
+  a_raw  <- as.numeric(sf::st_area(raw$all_lakes))
+  a_simp <- as.numeric(sf::st_area(simp$all_lakes))
+
+  expect_lt(abs(a_simp - a_raw) / a_raw, 0.05)
+
+  unlink(tmp_gpkg)
+})
+
+test_that("get_lake_boundary timeout arg accepted (signature plumbed through)", {
+  # We can't easily verify the timeout value reaches osmdata::opq without
+  # hitting the network, but we can at least confirm the argument is in the
+  # function signature and does not error when passed.
+  expect_true("timeout" %in% names(formals(lakefetch::get_lake_boundary)))
+  expect_true("simplify_tolerance_m" %in%
+              names(formals(lakefetch::get_lake_boundary)))
+
+  # And confirm the default values:
+  expect_equal(formals(lakefetch::get_lake_boundary)$timeout, 90)
+  expect_equal(formals(lakefetch::get_lake_boundary)$simplify_tolerance_m, 0)
+})
+
+test_that("query_osm_by_name expands narrow bbox for name-targeted queries", {
+  # The name-query bbox expansion (added so single points in huge lakes can
+  # retrieve the lake polygon) is implemented inside query_osm_by_name. We
+  # verify by mocking osmdata::opq to capture the bbox actually used.
+  captured_bbox <- NULL
+  local_mocked_bindings(
+    .package = "osmdata",
+    opq = function(bbox, ...) {
+      captured_bbox <<- bbox
+      structure(list(bbox = bbox), class = "overpass_query")
+    },
+    add_osm_feature = function(opq, ...) opq,
+    osmdata_sf = function(q) list(osm_polygons = NULL, osm_multipolygons = NULL),
+    set_overpass_url = function(url) invisible(NULL)
+  )
+
+  # Narrow input bbox (0.02 x 0.02 degrees)
+  bbox <- c(left = 17.402, bottom = 59.415, right = 17.422, top = 59.435)
+  invisible(lakefetch:::query_osm_by_name(
+    bbox, names = "TestLake",
+    overpass_servers = "https://example.invalid/api",
+    max_attempts = 1
+  ))
+
+  expect_false(is.null(captured_bbox))
+  # Expanded to at least 1.5 degrees in each dimension
+  span_x <- as.numeric(captured_bbox["right"] - captured_bbox["left"])
+  span_y <- as.numeric(captured_bbox["top"]   - captured_bbox["bottom"])
+  expect_gte(span_x, 1.5)
+  expect_gte(span_y, 1.5)
+})

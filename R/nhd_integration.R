@@ -66,9 +66,29 @@ add_lake_context <- function(fetch_results, lake_polygons, utm_epsg) {
 
   message("Adding lake context (NHD integration)...")
 
+  # Skip NHD integration entirely if no lakes were matched. This happens when
+  # all sites fail assignment (e.g., a site provided as being in "Long Lake"
+  # but coordinates were >500m from any OSM Long Lake polygon). In that case
+  # the bbox would contain NAs and nhdplusTools::get_waterbodies() would
+  # error out with "!anyNA(x) is not TRUE".
+  if (is.null(lake_polygons) || nrow(lake_polygons) == 0) {
+    message("  No matched lake polygons - skipping NHD lookup")
+    message("Lake context complete.")
+    return(fetch_results)
+  }
+
   # Get bounding box for all lakes
   lake_polygons_wgs84 <- sf::st_transform(lake_polygons, 4326)
   bbox <- sf::st_bbox(lake_polygons_wgs84)
+
+  # Defensive check: a bbox with any NA coordinates will fail downstream.
+  # This can happen if lake_polygons contains only empty geometries.
+  if (anyNA(as.numeric(bbox))) {
+    message("  Lake bounding box contains NA - skipping NHD lookup")
+    message("Lake context complete.")
+    return(fetch_results)
+  }
+
   bbox[1] <- bbox[1] - 0.1
   bbox[2] <- bbox[2] - 0.1
   bbox[3] <- bbox[3] + 0.1

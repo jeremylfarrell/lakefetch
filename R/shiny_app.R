@@ -74,14 +74,20 @@ fetch_app <- function(fetch_data, title = NULL) {
 
   # Store lake data for click analysis
   lakes_utm <- fetch_data$lakes
-  utm_epsg <- sf::st_crs(lakes_utm)$epsg
+  # Prefer the stored utm_epsg (added by fetch_calculate) over deriving from
+  # the CRS object, which can return NA for some PROJ configurations
+  utm_epsg <- fetch_data$utm_epsg
+  if (is.null(utm_epsg) || is.na(utm_epsg)) {
+    utm_epsg <- sf::st_crs(lakes_utm)$epsg
+  }
   n_sites <- nrow(fetch_data$results)
   # Cluster markers when many sites or when sites span a wide geographic area
   # (e.g., sites on lakes across multiple states/countries)
   results_bbox <- sf::st_bbox(sf::st_transform(fetch_data$results, 4326))
   geo_span <- max(results_bbox["xmax"] - results_bbox["xmin"],
                   results_bbox["ymax"] - results_bbox["ymin"])
-  use_clustering <- n_sites > 30 || geo_span > 5  # >5 degrees ~ multiple regions
+  # Use isTRUE() to guard against NA (can occur if bbox has NA values)
+  use_clustering <- isTRUE(n_sites > 30) || isTRUE(geo_span > 5)
   # For small datasets, pre-render rose plots in popups for best UX
   # For large datasets (>50 sites), generate on demand to avoid long startup
   prerender_roses <- n_sites <= 50
@@ -1149,10 +1155,11 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
                     weight = 1, opacity = 0.3)
 
       # Cluster markers when many sites or wide geographic spread
+      # Use isTRUE() to guard against NA (can occur if bbox has NA values)
       bbox_wgs <- sf::st_bbox(results_wgs)
       geo_span_upload <- max(bbox_wgs["xmax"] - bbox_wgs["xmin"],
                              bbox_wgs["ymax"] - bbox_wgs["ymin"])
-      use_cluster <- n_sites > 30 || geo_span_upload > 5
+      use_cluster <- isTRUE(n_sites > 30) || isTRUE(geo_span_upload > 5)
 
       if (use_cluster) {
         m <- m |> leaflet::addCircleMarkers(

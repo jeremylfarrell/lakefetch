@@ -41,7 +41,7 @@ test_that("download_lake_osm works with mocked single-bbox query", {
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       list(mock_polys)
     },
     .package = "lakefetch"
@@ -84,7 +84,7 @@ test_that("download_lake_osm handles lake_name column for name-based queries", {
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       captured_names <<- lake_names
       list(mock_polys)
     },
@@ -128,7 +128,7 @@ test_that("download_lake_osm filters small water bodies", {
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       list(both)
     },
     .package = "lakefetch"
@@ -151,7 +151,7 @@ test_that("download_lake_osm warns and creates fallback when no water bodies fou
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       list()  # No results
     },
     .package = "lakefetch"
@@ -187,7 +187,7 @@ test_that("download_lake_osm_single tries name query first", {
   )
 
   local_mocked_bindings(
-    query_osm_by_name = function(bbox, names, overpass_servers, max_attempts = 3) {
+    query_osm_by_name = function(bbox, names, overpass_servers, max_attempts = 3, ...) {
       mock_osm_result
     },
     .package = "lakefetch"
@@ -216,7 +216,7 @@ test_that("get_lake_boundary dispatches to OSM download when no file", {
   local_mocked_bindings(
     download_lake_osm_single = function(bbox_vec, lake_names = NULL,
                                          overpass_servers = NULL,
-                                         name_only = FALSE) {
+                                         name_only = FALSE, ...) {
       list(mock_polys)
     },
     .package = "lakefetch"

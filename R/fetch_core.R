@@ -10,9 +10,12 @@
 #'
 #' @param sites Data frame or sf object with site locations
 #' @param lake Lake boundary data from \code{\link{get_lake_boundary}}
-#' @param depth_m Water depth in meters for orbital velocity calculation.
-#'   Can be a single value (applied to all sites), a vector (one per site),
-#'   or NULL to use depth from sites data or default from options.
+#' @param depth_m Mean water depth in meters for orbital velocity calculation
+#'   (used in the SMB wave hindcast equations). Can be a single value (applied
+#'   to all sites), a vector (one per site), or NULL to use depth from sites
+#'   data or the default from \code{\link{lakefetch_options}}. Mean depth is
+#'   preferred over maximum depth as it better represents conditions across
+#'   the water column for wave attenuation estimates.
 #' @param fetch_method Method for calculating effective fetch. Options:
 #'   \describe{
 #'     \item{"top3"}{Mean of the 3 highest directional fetch values (default)}
@@ -165,6 +168,11 @@ fetch_calculate <- function(sites, lake, depth_m = NULL, fetch_method = NULL,
       fetch_data$max_fetch <- do.call(rbind, max_fetch_list)
     }
   }
+
+  # Include utm_epsg in output so downstream tools (e.g. fetch_app) can use it
+  # without having to re-derive it from the CRS object (which can return NA
+  # for some PROJ configurations)
+  fetch_data$utm_epsg <- utm_epsg
 
   return(fetch_data)
 }

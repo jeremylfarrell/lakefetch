@@ -29,24 +29,24 @@ adirondack_sites <- data.frame(
     rep("Tupper Lake", 3)
   ),
   latitude = c(
-    # Blue Mountain Lake (~43.87°N)
-    43.8721, 43.8695, 43.8648,
-    # Raquette Lake (~43.82°N)
-    43.8234, 43.8189, 43.8267, 43.8156,
-    # Long Lake (~43.98°N)
-    43.9812, 43.9756,
-    # Tupper Lake (~44.23°N)
-    44.2298, 44.2245, 44.2187
+    # Blue Mountain Lake - verified in-water (OSM relation 2202972)
+    43.8645, 43.8674, 43.8648,
+    # Raquette Lake - verified in-water (OSM relation; lake area ~22 km2)
+    43.8613, 43.8196, 43.8474, 43.8210,
+    # Long Lake - verified in-water (OSM relation 1871997)
+    43.9846, 43.9756,
+    # Tupper Lake - verified in-water (OSM relation; lake area ~21 km2)
+    44.2288, 44.2121, 44.1818
   ),
   longitude = c(
-    # Blue Mountain Lake (~74.44°W)
-    -74.4412, -74.4356, -74.4489,
-    # Raquette Lake (~74.66°W)
-    -74.6623, -74.6578, -74.6701, -74.6534,
+    # Blue Mountain Lake (~74.45°W)
+    -74.4404, -74.4542, -74.4489,
+    # Raquette Lake (~74.63°W)
+    -74.6540, -74.6443, -74.6387, -74.6090,
     # Long Lake (~74.42°W)
-    -74.4234, -74.4189,
-    # Tupper Lake (~74.46°W)
-    -74.4612, -74.4567, -74.4498
+    -74.4128, -74.4189,
+    # Tupper Lake (~74.50°W)
+    -74.4675, -74.4824, -74.5022
   ),
   datetime = as.POSIXct(c(
     "2024-07-15 09:30:00", "2024-07-15 10:15:00", "2024-07-15 11:00:00",
