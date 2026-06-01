@@ -30,9 +30,13 @@ fetch_calculate(
 
 - depth_m:
 
-  Water depth in meters for orbital velocity calculation. Can be a
-  single value (applied to all sites), a vector (one per site), or NULL
-  to use depth from sites data or default from options.
+  Mean water depth in meters for orbital velocity calculation (used in
+  the SMB wave hindcast equations). Can be a single value (applied to
+  all sites), a vector (one per site), or NULL to use depth from sites
+  data or the default from
+  [`lakefetch_options`](https://jeremylfarrell.github.io/lakefetch/reference/lakefetch_options.md).
+  Mean depth is preferred over maximum depth as it better represents
+  conditions across the water column for wave attenuation estimates.
 
 - fetch_method:
 

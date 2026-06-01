@@ -58,7 +58,7 @@ remotes::install_github("jeremylfarrell/lakefetch")
 library(lakefetch)
 
 # Load sampling sites from a CSV with latitude/longitude columns
-sites <- load_sites("my_sites.csv")
+sites <- load_sites(system.file("extdata", "sample_sites.csv", package = "lakefetch"))
 
 # Download lake boundaries from OpenStreetMap
 lake <- get_lake_boundary(sites)
@@ -77,7 +77,8 @@ results$results
 2.  **Get lake boundaries** automatically from OpenStreetMap, or load
     your own shapefiles/geopackages.
 3.  **Calculate fetch** by casting rays from each site outward at
-    regular angular intervals (default 5 degrees) and measuring the
+    regular angular intervals (default 5 degrees, configurable via
+    `lakefetch_options(angle_resolution_deg = 10)`) and measuring the
     distance to the nearest shoreline in each direction.
 4.  **Classify exposure** based on effective fetch: Sheltered (\< 2.5
     km), Moderate (2.5–5 km), or Exposed (\> 5 km). Thresholds are
@@ -272,7 +273,7 @@ credited as co-author on all commits via `Co-Authored-By` tags.
 ## Contributing
 
 Contributions are welcome. Please see
-[CONTRIBUTING.md](https://jeremylfarrell.github.io/lakefetch/CONTRIBUTING.md)
+[CONTRIBUTING.md](https://github.com/jeremylfarrell/lakefetch/blob/main/CONTRIBUTING.md)
 for guidelines on reporting bugs, suggesting features, and submitting
 pull requests.
 
@@ -280,7 +281,7 @@ pull requests.
 
 Please note that the lakefetch project is released with a [Contributor
 Code of
-Conduct](https://jeremylfarrell.github.io/lakefetch/CODE_OF_CONDUCT.md).
+Conduct](https://github.com/jeremylfarrell/lakefetch/blob/main/CODE_OF_CONDUCT.md).
 By contributing to this project, you agree to abide by its terms.
 
 ## License

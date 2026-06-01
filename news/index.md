@@ -1,5 +1,96 @@
 # Changelog
 
+## lakefetch 0.1.4
+
+Changes in response to the rOpenSci peer review by Jorrit Mesman
+(ropensci/software-review#762).
+
+### New features
+
+- **Configurable Overpass timeout**:
+  [`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md)
+  gains a `timeout` argument (default 90 seconds). Pass `timeout = 300`
+  (or higher) for very large lakes such as Mälaren, Vättern, Võrtsjärv,
+  or the Great Lakes where the default Overpass query may time out.
+- **Polygon simplification for large/complex lakes**:
+  [`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md)
+  gains a `simplify_tolerance_m` argument that applies
+  `sf::st_simplify(dTolerance = ...)` in meters to the returned lake
+  polygons. Useful for lakes with very complex shorelines where an exact
+  coastline is not needed and a coarser polygon greatly speeds up fetch
+  ray-casting. Works for both OSM-downloaded and user-supplied boundary
+  files.
+
+### Bug fixes
+
+- **Sample sites placed inside lakes**: Both
+  `inst/extdata/sample_sites.csv` and the `adirondack_sites` example
+  dataset previously contained points located just outside the
+  corresponding lake polygons, which produced `NA` exposure values and
+  prevented some output features from being displayed. All example site
+  coordinates have been verified to fall inside their lake boundaries.
+- **Silent fallback fetch values for points outside lakes**: When a site
+  was outside the lake polygon, `get_highres_fetch()` previously
+  returned the maximum search distance (50 km) for all directions,
+  producing silently incorrect fetch results. It now returns `NA` for
+  all directions in this case, matching what users expect.
+- **Name-targeted OSM queries for huge lakes**: When a single site sat
+  inside a very large lake (e.g., Mälaren, Vättern), the narrow query
+  bounding box fell entirely inside the lake polygon and Overpass
+  returned no features (since Overpass returns features whose nodes fall
+  inside the bbox, and the boundary nodes of a huge polygon are far
+  outside a small interior bbox). When a lake name is provided,
+  [`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md)
+  now expands the bounding box for the name-filtered query to at least
+  1.5 degrees in each dimension, which is safe because the name filter
+  is highly selective. This is what allows the Mälaren / Vättern /
+  Võrtsjärv test cases from the rOpenSci review to retrieve their
+  boundaries from a single coordinate.
+- **NHD integration `!anyNA(x)` error on unmatched sites**: When all
+  sites failed lake assignment (e.g., coordinates \>500 m from any
+  same-named OSM polygon), the resulting lake set could be empty or
+  contain only empty geometries, and
+  [`add_lake_context()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_context.md)
+  would pass an NA-containing bounding box to
+  [`nhdplusTools::get_waterbodies()`](https://doi-usgs.github.io/nhdplusTools/reference/get_waterbodies.html),
+  which errored with “!anyNA(x) is not TRUE”.
+  [`add_lake_context()`](https://jeremylfarrell.github.io/lakefetch/reference/add_lake_context.md)
+  now short-circuits early in this case and returns the fetch results
+  with NA NHD columns.
+- **[`fetch_app()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app.md)
+  crash with user-supplied shapefiles**: Fixed “missing value where
+  TRUE/FALSE needed” error when launching the Shiny app on results
+  derived from a user-supplied lake boundary. The UTM EPSG code is now
+  stored on the fetch result so the app no longer has to re-derive it
+  (which could return `NA` for non-standard CRS strings), and the
+  file-loading CRS check no longer depends on the `$input` string
+  representation.
+- **[`plot_fetch_map()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_map.md)
+  clipped large lakes**: The map bounding box was computed from sites
+  only, so when sites were clustered in one part of a large lake the
+  rest of the lake was cropped off. The bounding box now unions sites
+  and lake polygons.
+- **Rose diagram integer index bug**: Fixed an integer-index issue in
+  [`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)
+  that affected rose diagrams for custom-clicked points in the Shiny
+  app.
+
+### Documentation
+
+- **Quick Start examples use installed sample data**: README and
+  `vignettes/getting-started.Rmd` Quick Start blocks no longer reference
+  `my_lake_sites.csv` / `my_sites.csv` (which did not exist). They now
+  use
+  `system.file("extdata", "sample_sites.csv", package = "lakefetch")`.
+- **`depth_m` argument clarified**: Documentation for
+  [`fetch_calculate()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_calculate.md)
+  now explicitly states that `depth_m` should be the mean water depth
+  (preferred over maximum depth for representing wave attenuation across
+  the water column).
+- **Angle-resolution discoverability**: README now points to
+  `lakefetch_options(angle_resolution_deg = ...)` as the way to change
+  the default 5-degree fetch ray resolution.
+
 ## lakefetch 0.1.3
 
 CRAN release: 2026-03-20
