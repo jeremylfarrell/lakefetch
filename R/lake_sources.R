@@ -328,12 +328,27 @@ download_lake_osm <- function(sites_df, timeout = 90) {
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(TRUE), add = TRUE)
 
-  # Convert to sf object (WGS84)
+  # Convert to sf object (WGS84). For data.frame input, detect lat/lon
+  # columns flexibly (case-insensitive, accepts "lat"/"latitude", "lon"/"long"
+  # /"longitude") so users don't have to pre-process with load_sites() if
+  # their data already has standard-ish column names.
   if (inherits(sites_df, "sf")) {
     sites_sf <- sf::st_transform(sites_df, 4326)
   } else {
+    col_lower <- tolower(names(sites_df))
+    lat_idx <- which(col_lower %in% c("latitude", "lat", "y"))[1]
+    if (is.na(lat_idx)) lat_idx <- grep("^lat", col_lower)[1]
+    lon_idx <- which(col_lower %in% c("longitude", "lon", "long", "lng", "x"))[1]
+    if (is.na(lon_idx)) lon_idx <- grep("^lon", col_lower)[1]
+    if (is.na(lat_idx) || is.na(lon_idx)) {
+      stop("Could not find latitude / longitude columns in input data.frame.\n",
+           "  Available columns: ", paste(names(sites_df), collapse = ", "), "\n",
+           "  Either rename columns to 'latitude' / 'longitude' or pass the\n",
+           "  data through load_sites() first.", call. = FALSE)
+    }
     sites_sf <- sf::st_as_sf(sites_df,
-                              coords = c("longitude", "latitude"),
+                              coords = c(names(sites_df)[lon_idx],
+                                         names(sites_df)[lat_idx]),
                               crs = 4326)
   }
 
@@ -383,7 +398,34 @@ download_lake_osm <- function(sites_df, timeout = 90) {
     water_list <- download_lake_osm_single(bbox_vec, cluster_lake_names,
                                            overpass_servers, timeout = timeout)
   } else {
-    # --- Large spread: per-cluster small bbox queries ---
+    # --- Large spread ---
+    # Fast path: if every site has a known lake name, issue a single
+    # name-filtered Overpass query covering the whole site bbox. The name
+    # regex is selective enough that returns stay small, and one query is
+    # dramatically faster than per-cluster broad queries.
+    all_named <- !is.null(lake_name_col) &&
+      all(!is.na(sites_sf[[lake_name_col]]) &
+          nchar(trimws(as.character(sites_sf[[lake_name_col]]))) > 0)
+
+    if (isTRUE(all_named)) {
+      unique_names <- unique(sites_sf[[lake_name_col]])
+      message("  Site spread is ", round(site_spread, 1),
+              " degrees with all sites named - using single name-filtered query for ",
+              length(unique_names), " lake(s)")
+      bbox_vec_full <- c(bbox["xmin"], bbox["ymin"],
+                         bbox["xmax"], bbox["ymax"])
+      names(bbox_vec_full) <- c("left", "bottom", "right", "top")
+      name_res <- query_osm_by_name(bbox_vec_full, unique_names,
+                                     overpass_servers,
+                                     timeout = max(timeout, 120))
+      if (!is.null(name_res)) {
+        water_list <- c(water_list, extract_osm_polys(name_res))
+      }
+      tryCatch(osmdata::set_overpass_url(overpass_servers[1]),
+               error = function(e) NULL)
+    } else {
+
+    # --- Per-cluster small bbox queries (used when lake names are missing) ---
     # Each cluster gets a tiny bbox (~0.1 degree) and a single natural=water
     # query. Small bboxes return quickly with just nearby water bodies.
     clusters <- cluster_sites(sites_sf)
@@ -474,16 +516,18 @@ download_lake_osm <- function(sites_df, timeout = 90) {
     # Reset to default server
     tryCatch(osmdata::set_overpass_url(overpass_servers[1]),
              error = function(e) NULL)
+    }  # close the !all_named (per-cluster) branch
   }
 
-  # Auto-detect UTM zone from sites
-  site_coords <- if (inherits(sites_df, "sf")) {
-    sf::st_coordinates(sf::st_centroid(sf::st_union(sites_df)))
-  } else {
-    c(mean(sites_df$longitude), mean(sites_df$latitude))
-  }
-  utm_zone <- floor((site_coords[1] + 180) / 6) + 1
-  utm_epsg <- ifelse(site_coords[2] >= 0,
+  # Auto-detect UTM zone from sites. Critical: use sites_sf (already
+  # transformed to WGS84 / lon-lat) rather than the raw sites_df, which could
+  # be in a projected CRS (e.g., UTM). Using raw projected coordinates here
+  # produced garbage EPSG codes like 32683364 from inputs already in UTM.
+  centroid_ll <- suppressWarnings(
+    sf::st_coordinates(sf::st_centroid(sf::st_union(sites_sf)))
+  )
+  utm_zone <- floor((centroid_ll[1] + 180) / 6) + 1
+  utm_epsg <- ifelse(centroid_ll[2] >= 0,
                      as.numeric(paste0("326", sprintf("%02d", utm_zone))),
                      as.numeric(paste0("327", sprintf("%02d", utm_zone))))
 
@@ -516,7 +560,7 @@ download_lake_osm <- function(sites_df, timeout = 90) {
   message("  Total water bodies found: ", nrow(all_water))
 
   message("  Auto-detected UTM Zone: ", utm_zone,
-          ifelse(site_coords[2] >= 0, "N", "S"))
+          ifelse(centroid_ll[2] >= 0, "N", "S"))
 
   # Transform EVERYTHING to UTM before spatial operations
   message("  Transforming to UTM for analysis...")
@@ -702,7 +746,11 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #'
 #' @param sites_sf sf object with site points
 #' @param water_polygons sf object with lake polygons
-#' @param tolerance_m Buffer distance for matching sites near lake edges
+#' @param tolerance_m Buffer distance in meters for matching sites that fall
+#'   just outside lake polygons (e.g., due to GPS noise or coarse OSM
+#'   boundaries). Default is the value from \code{lakefetch_options()} (50 m).
+#'   For datasets with appreciable GPS error or for very coarsely mapped
+#'   shorelines, try 100-500 m.
 #'
 #' @return sf object with sites and added columns for lake_osm_id, lake_name, lake_area_km2
 #'
@@ -711,11 +759,14 @@ load_lake_file <- function(sites_df, lake_file_path) {
 #' sites <- load_sites(csv_path)
 #' lake_data <- get_lake_boundary(sites)
 #'
-#' # Assign sites to their containing lakes
+#' # Assign sites to their containing lakes. Default tolerance (50 m) is
+#' # appropriate for sites with accurate coordinates that fall inside the
+#' # lake polygon. If your sites are near the shoreline or your GPS error is
+#' # larger, increase tolerance_m (e.g., 200-500 m).
 #' sites_assigned <- assign_sites_to_lakes(
 #'   lake_data$sites,
 #'   lake_data$all_lakes,
-#'   tolerance_m = 50
+#'   tolerance_m = 200
 #' )
 #'
 #' # Check assignments
@@ -911,6 +962,7 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
       }
     }
 
+    unmatched_lakes <- NULL
     if (!is.null(lake_col)) {
       unmatched_lakes <- unique(unmatched_sites[[lake_col]])
       message("    Unmatched sites claim to be in: ", paste(unmatched_lakes, collapse = ", "))
@@ -926,6 +978,18 @@ assign_sites_to_lakes <- function(sites_sf, water_polygons, tolerance_m = NULL) 
     # Suggest increasing tolerance or checking OSM
     message("    TIP: Try lakefetch_options(gps_tolerance_m = 100) for larger buffer")
     message("    TIP: Check if the lake exists in OpenStreetMap at openstreetmap.org")
+
+    # Promote to a warning so it is surfaced through warnings() and not lost
+    # in the message stream. Affected sites get NA fetch downstream, which is
+    # easy to miss if the user only skims the console.
+    warning(unmatched, " site(s) could not be assigned to any lake polygon",
+            if (!is.null(unmatched_lakes))
+              paste0(" (claimed lakes: ", paste(unmatched_lakes, collapse = ", "), ")")
+            else "",
+            ". These sites will receive NA fetch values.",
+            " See the diagnostic messages above for coordinate ranges",
+            " and try increasing tolerance_m if the sites are near a shoreline.",
+            call. = FALSE)
   }
 
   # Clean up lake names - look up from water_polygons if name is NA

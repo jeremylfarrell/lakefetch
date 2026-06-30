@@ -227,3 +227,175 @@ test_that("get_lake_boundary dispatches to OSM download when no file", {
   expect_type(result, "list")
   expect_true("all_lakes" %in% names(result))
 })
+
+# --- v0.1.5 regression tests for Khondula review fixes ---
+
+test_that("download_lake_osm computes valid UTM EPSG for sf input in projected CRS", {
+  # Khondula: passing example_lake (EPSG:32618 UTM) to get_lake_boundary
+  # produced EPSG:32683364 because the UTM zone was derived from raw projected
+  # coordinates instead of WGS84.
+  sites_wgs <- sf::st_sf(
+    Site = "S1",
+    geometry = sf::st_sfc(sf::st_point(c(-74.05, 43.05)), crs = 4326)
+  )
+  sites_utm <- sf::st_transform(sites_wgs, 32618)
+
+  mock_polys <- create_mock_water_polys()
+  mock_polys$area_km2 <- as.numeric(sf::st_area(
+    sf::st_transform(mock_polys, 32618))) / 1e6
+
+  local_mocked_bindings(
+    download_lake_osm_single = function(bbox_vec, lake_names = NULL,
+                                         overpass_servers = NULL,
+                                         name_only = FALSE, ...) {
+      list(mock_polys)
+    },
+    .package = "lakefetch"
+  )
+
+  result <- lakefetch:::download_lake_osm(sites_utm)
+
+  # Valid northern-hemisphere UTM EPSGs are 32601-32660. The pre-fix bug
+  # produced numbers like 32683364.
+  expect_gte(result$utm_epsg, 32601)
+  expect_lte(result$utm_epsg, 32660)
+  # The expected zone for (-74°, 43°) is 18N -> EPSG:32618
+  expect_equal(result$utm_epsg, 32618)
+})
+
+test_that("download_lake_osm detects flexible lat/lon column names", {
+  # Khondula: load_sites accepts 'lat'/'lon', get_lake_boundary did not.
+  # Now get_lake_boundary should accept abbreviated, capitalized, and y/x
+  # column names on data.frame input.
+  mock_polys <- create_mock_water_polys()
+  mock_polys$area_km2 <- as.numeric(sf::st_area(
+    sf::st_transform(mock_polys, 32618))) / 1e6
+
+  local_mocked_bindings(
+    download_lake_osm_single = function(bbox_vec, lake_names = NULL,
+                                         overpass_servers = NULL,
+                                         name_only = FALSE, ...) {
+      list(mock_polys)
+    },
+    .package = "lakefetch"
+  )
+
+  # Variant 1: 'lat'/'lon'
+  sites_lat <- data.frame(Site = "S1", lat = 43.005, lon = -74.005,
+                          stringsAsFactors = FALSE)
+  expect_no_error(
+    result1 <- lakefetch:::download_lake_osm(sites_lat)
+  )
+  expect_true("utm_epsg" %in% names(result1))
+
+  # Variant 2: capitalized
+  sites_cap <- data.frame(Site = "S1", Latitude = 43.005, Longitude = -74.005,
+                          stringsAsFactors = FALSE)
+  expect_no_error(lakefetch:::download_lake_osm(sites_cap))
+
+  # Variant 3: y/x convention
+  sites_xy <- data.frame(Site = "S1", y = 43.005, x = -74.005,
+                         stringsAsFactors = FALSE)
+  expect_no_error(lakefetch:::download_lake_osm(sites_xy))
+
+  # Variant 4: missing both columns -> actionable error listing available cols
+  sites_bad <- data.frame(Site = "S1", foo = 1, bar = 2,
+                          stringsAsFactors = FALSE)
+  expect_error(
+    lakefetch:::download_lake_osm(sites_bad),
+    "latitude / longitude columns"
+  )
+})
+
+test_that("download_lake_osm takes name-filtered fast path when all sites named and spread > 0.5 deg", {
+  # Khondula: wisconsin_lakes (3 lakes, ~1 degree spread, all with lake.name)
+  # took 18-50 minutes via per-cluster broad queries. The fast path issues a
+  # single name-filtered query covering the union bbox instead.
+  sites <- data.frame(
+    Site = c("S1", "S2", "S3"),
+    latitude = c(43.10, 43.06, 42.59),
+    longitude = c(-89.42, -89.36, -88.43),
+    lake.name = c("Lake Mendota", "Lake Monona", "Geneva Lake"),
+    stringsAsFactors = FALSE
+  )
+
+  mock_polys <- create_mock_water_polys(center_lon = -89, center_lat = 43,
+                                         n_lakes = 3)
+  mock_polys$area_km2 <- as.numeric(sf::st_area(
+    sf::st_transform(mock_polys, 32616))) / 1e6
+
+  mock_osm_result <- list(
+    osm_polygons = sf::st_sf(
+      osm_id = "mock_1", name = "Lake Mendota",
+      geometry = sf::st_sfc(
+        sf::st_polygon(list(matrix(c(-89.5, 42.5, -88.3, 42.5,
+                                      -88.3, 43.2, -89.5, 43.2,
+                                      -89.5, 42.5), ncol = 2, byrow = TRUE))),
+        crs = 4326
+      )
+    ),
+    osm_multipolygons = NULL
+  )
+
+  name_call_count <- 0
+  osmdata_call_count <- 0
+
+  local_mocked_bindings(
+    query_osm_by_name = function(bbox, names, overpass_servers,
+                                  max_attempts = 3, ...) {
+      name_call_count <<- name_call_count + 1
+      # Verify the name-targeted query gets the full union bbox, not a small
+      # per-cluster bbox.
+      bbox_span_x <- as.numeric(bbox["right"] - bbox["left"])
+      expect_gt(bbox_span_x, 0.5)
+      mock_osm_result
+    },
+    .package = "lakefetch"
+  )
+
+  # Also intercept osmdata::osmdata_sf. The pre-fix cluster path calls
+  # osmdata_sf() directly (not download_lake_osm_single), so mocking this is
+  # the only way to detect a regression where the fast path fails to trigger
+  # and the function silently falls through to per-cluster broad queries.
+  local_mocked_bindings(
+    osmdata_sf = function(q) {
+      osmdata_call_count <<- osmdata_call_count + 1
+      mock_osm_result
+    },
+    .package = "osmdata"
+  )
+
+  result <- lakefetch:::download_lake_osm(sites)
+
+  # Fast path: exactly one name-filtered call, ZERO direct osmdata_sf calls
+  # (those would indicate the cluster path ran).
+  expect_equal(name_call_count, 1)
+  expect_equal(osmdata_call_count, 0)
+  expect_true("all_lakes" %in% names(result))
+})
+
+test_that("assign_sites_to_lakes emits warning when sites cannot be matched", {
+  # Khondula: unmatched sites only produced messages; users missed them.
+  # Now also a warning() is emitted that surfaces through warnings().
+  sites <- sf::st_sf(
+    Site = c("S1"),
+    lake.name = "Imaginary Lake",
+    geometry = sf::st_sfc(sf::st_point(c(500000, 4800000)), crs = 32618)
+  )
+
+  # A polygon far from the site (>500 km away)
+  poly_coords <- matrix(c(
+    0, 0, 1000, 0, 1000, 1000, 0, 1000, 0, 0
+  ), ncol = 2, byrow = TRUE)
+  far_lakes <- sf::st_sf(
+    osm_id = "far_lake",
+    name = "Far Lake",
+    area_km2 = 1.0,
+    geometry = sf::st_sfc(sf::st_polygon(list(poly_coords)), crs = 32618)
+  )
+
+  expect_warning(
+    lakefetch::assign_sites_to_lakes(sites, far_lakes, tolerance_m = 50),
+    "could not be assigned to any lake polygon"
+  )
+})

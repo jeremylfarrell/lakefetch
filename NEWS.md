@@ -1,3 +1,68 @@
+# lakefetch 0.1.5
+
+Changes in response to the second rOpenSci peer review by Khondula
+(ropensci/software-review#762).
+
+## Bug fixes
+
+* **Invalid UTM EPSG when sf input is in a projected CRS**: When a user
+  passed an sf object in a non-WGS84 CRS (e.g., the bundled `example_lake`
+  in UTM zone 18N) to `get_lake_boundary()`, the UTM zone detection was
+  performed on the raw projected coordinates and produced nonsensical EPSG
+  codes such as `EPSG:32683364`. The UTM zone is now computed from the
+  centroid of the WGS84-transformed sites instead of the raw input.
+* **Sites unassigned to lakes now emit a warning, not just a message**:
+  When `assign_sites_to_lakes()` cannot match one or more sites, it now
+  emits a `warning()` in addition to the diagnostic messages. The previous
+  message-only behavior could be missed in console output, leading users
+  to believe the workflow had fully succeeded when in fact some sites had
+  NA fetch values.
+* **Getting-started vignette runnable end-to-end**: The Quick Start chunks
+  were reorganized so the `sites` object is not overwritten with mismatched
+  coordinates, and the network-dependent chunks are explicitly marked
+  `eval = FALSE` with a note explaining how to run them interactively.
+
+## Improvements
+
+* **Flexible column-name detection for `get_lake_boundary()`**: The function
+  now auto-detects latitude / longitude columns on data.frame input the
+  same way `load_sites()` does (accepts "lat" / "latitude" / "y" and
+  "lon" / "long" / "longitude" / "lng" / "x", case-insensitive). Previously
+  it required the exact column names produced by `load_sites()`.
+* **Faster downloads for spread-out named lakes**: When all sites have a
+  known lake name and the site spread exceeds 0.5 degrees,
+  `get_lake_boundary()` now issues a single name-filtered Overpass query
+  covering the union bounding box instead of looping through per-cluster
+  broad queries. For datasets like `wisconsin_lakes` (3 lakes spread
+  across ~1 degree), this typically reduces download time from many
+  minutes to under a minute.
+* **`add_weather_context()` docs expanded**: The function documentation
+  now describes what the function does (queries Open-Meteo, combines with
+  fetch, integrates wave energy), and the `windows_hours` argument is
+  documented explicitly (per-window column names, intended use as
+  look-back windows ending at each sample's `datetime`).
+* **`assign_sites_to_lakes()` `tolerance_m` documented**: The default
+  (50 m via `lakefetch_options()`) is now explained, with guidance to
+  increase it (200-500 m) for sites with appreciable GPS error or
+  near-shore coordinates. The example uses `tolerance_m = 200` so users
+  see a working invocation.
+
+## Shiny app improvements
+
+* **Colorblind-friendly palette**: Exposure markers, rays, and legend text
+  now use the Okabe-Ito palette (blue / orange / vermillion) instead of
+  green / gold / red. The previous palette was hard to distinguish for
+  users with red-green color vision deficiency, and the bright yellow
+  legend text on the default sidebar background was hard to read.
+* **Layer switcher (OSM / Imagery / USGS NHD)**: The map now offers Esri
+  World Imagery and OpenStreetMap as switchable base layers, with the
+  USGS National Hydrography Dataset hosted overlay available as a toggle.
+* **Custom point analysis no longer clobbered by marker clicks**: In
+  `fetch_app_upload()`, clicking a pre-loaded site marker previously wrote
+  the marker's rose plot into the same sidebar slot as the custom-point
+  analysis result, hiding it. The pre-loaded site details now have their
+  own sidebar slot and the custom point analysis stays visible.
+
 # lakefetch 0.1.4
 
 Changes in response to the rOpenSci peer review by Jorrit Mesman

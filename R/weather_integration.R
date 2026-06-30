@@ -307,18 +307,30 @@ calculate_cumulative_wave_energy <- function(fetch_by_direction, weather_df,
 #' Add Weather Context to Fetch Results
 #'
 #' Adds historical weather metrics and cumulative wave energy to fetch
-#' calculation results.
+#' calculation results. For each site, the function queries the Open-Meteo
+#' historical-weather API for wind speed and direction in the days leading
+#' up to the sample's `datetime`, combines those winds with the site's
+#' directional fetch to estimate wave height (Sverdrup-Munk-Bretschneider
+#' equations), and integrates wave energy across the requested look-back
+#' window(s).
 #'
 #' @param fetch_results sf object with fetch results (must have datetime column)
 #' @param datetime_col Name of the datetime column
-#' @param windows_hours Vector of time windows in hours (default c(24, 72, 168))
+#' @param windows_hours Numeric vector of look-back windows in hours over
+#'   which to integrate cumulative wave energy. The default
+#'   \code{c(24, 72, 168)} produces metrics for the 1-day, 3-day, and 7-day
+#'   windows ending at each site's sampling \code{datetime}. For each window
+#'   the function adds columns named \code{wave_energy_24h},
+#'   \code{wave_energy_72h}, \code{wave_energy_168h}, etc.
 #' @param depth_m Water depth for orbital velocity calculation
 #'
 #' @return sf object with additional weather columns
 #'
 #' @details
 #' The input data must have a datetime column in POSIXct format or a format
-#' that can be parsed (ISO 8601, or common date-time formats).
+#' that can be parsed (ISO 8601, or common date-time formats). Network access
+#' to the Open-Meteo API is required; sites are queried sequentially with a
+#' short pause between calls to respect the public API rate limit.
 #'
 #' @examplesIf interactive()
 #' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")

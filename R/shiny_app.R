@@ -115,7 +115,13 @@ fetch_app <- function(fetch_data, title = NULL) {
         shiny::h5("Selected Site:"),
         shiny::textOutput("selected_site"),
         shiny::uiOutput("site_details"),
-        shiny::uiOutput("click_results"),
+        shiny::conditionalPanel(
+          condition = "output.has_click_result == true",
+          shiny::hr(),
+          shiny::h5("Custom Point Analysis:",
+                    style = "color: #B36A00;"),
+          shiny::uiOutput("click_results")
+        ),
         shiny::hr(),
         shiny::h5("Color Legend:"),
         shiny::uiOutput("legend_text"),
@@ -186,14 +192,14 @@ fetch_app <- function(fetch_data, title = NULL) {
 
     # Color palettes
     exposure_pal <- leaflet::colorFactor(
-      palette = c("firebrick", "goldenrod", "forestgreen"),
+      palette = c("#D55E00", "#E69F00", "#0072B2"),
       levels = c("Exposed", "Moderate", "Sheltered")
     )
 
     # Reactive ray palette based on current thresholds
     ray_pal_reactive <- shiny::reactive({
       leaflet::colorBin(
-        palette = c("forestgreen", "gold", "firebrick"),
+        palette = c("#0072B2", "#E69F00", "#D55E00"),
         domain = c(0, max(display_rv$exposed_m * 2, 10000)),
         bins = c(0, display_rv$sheltered_m, display_rv$exposed_m,
                  max(display_rv$exposed_m * 10, 50000))
@@ -203,13 +209,13 @@ fetch_app <- function(fetch_data, title = NULL) {
     # Initial legend text
     output$legend_text <- shiny::renderUI({
       shiny::tagList(
-        shiny::p(style = "color: firebrick;",
-          sprintf("Red: > %.1f km (Exposed)", display_rv$exposed_m / 1000)),
-        shiny::p(style = "color: gold;",
-          sprintf("Gold: %.1f-%.1f km (Moderate)",
+        shiny::p(style = "color: #D55E00; font-weight: bold;",
+          sprintf("Exposed: > %.1f km", display_rv$exposed_m / 1000)),
+        shiny::p(style = "color: #B36A00; font-weight: bold;",
+          sprintf("Moderate: %.1f-%.1f km",
                   display_rv$sheltered_m / 1000, display_rv$exposed_m / 1000)),
-        shiny::p(style = "color: forestgreen;",
-          sprintf("Green: < %.1f km (Sheltered)", display_rv$sheltered_m / 1000))
+        shiny::p(style = "color: #0072B2; font-weight: bold;",
+          sprintf("Sheltered: < %.1f km", display_rv$sheltered_m / 1000))
       )
     })
 
@@ -326,7 +332,22 @@ fetch_app <- function(fetch_data, title = NULL) {
       }
 
       m <- leaflet::leaflet(results_wgs) |>
-        leaflet::addProviderTiles("Esri.WorldImagery") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Imagery") |>
+        leaflet::addTiles(group = "OSM") |>
+        leaflet::addTiles(
+          urlTemplate = paste0("https://basemap.nationalmap.gov/arcgis/rest/",
+                                "services/USGSHydroCached/MapServer/tile/",
+                                "{z}/{y}/{x}"),
+          attribution = "USGS The National Map: National Hydrography Dataset",
+          options = leaflet::tileOptions(opacity = 0.8),
+          group = "USGS NHD"
+        ) |>
+        leaflet::addLayersControl(
+          baseGroups = c("Imagery", "OSM"),
+          overlayGroups = "USGS NHD",
+          options = leaflet::layersControlOptions(collapsed = FALSE)
+        ) |>
+        leaflet::hideGroup("USGS NHD") |>
         leaflet::addPolygons(data = lakes_wgs,
                     fill = FALSE, color = "white",
                     weight = 1, opacity = 0.3)
@@ -441,9 +462,9 @@ fetch_app <- function(fetch_data, title = NULL) {
           shiny::p(shiny::strong("Exposure: "),
             shiny::span(site_row$exposure_category, style = sprintf("color: %s; font-weight: bold;",
               switch(as.character(site_row$exposure_category),
-                "Exposed" = "firebrick",
-                "Moderate" = "goldenrod",
-                "Sheltered" = "forestgreen"
+                "Exposed" = "#D55E00",
+                "Moderate" = "#E69F00",
+                "Sheltered" = "#0072B2"
               )
             ))
           ),
@@ -455,6 +476,15 @@ fetch_app <- function(fetch_data, title = NULL) {
 
     # Store click analysis results
     click_result <- shiny::reactiveVal(NULL)
+
+    # Drives the conditionalPanel that shows the "Custom Point Analysis"
+    # sidebar section. Without this, clicking a pre-loaded marker can visually
+    # obscure the custom-point result (rose plots are tall) and the user can
+    # mistakenly think their custom analysis was discarded.
+    output$has_click_result <- shiny::reactive({
+      !is.null(click_result())
+    })
+    shiny::outputOptions(output, "has_click_result", suspendWhenHidden = FALSE)
 
     # Click handler for map (new point analysis)
     shiny::observeEvent(input$map_click, {
@@ -575,9 +605,9 @@ fetch_app <- function(fetch_data, title = NULL) {
 
         # Get exposure color
         exp_color <- switch(exposure,
-          "Exposed" = "firebrick",
-          "Moderate" = "goldenrod",
-          "Sheltered" = "forestgreen"
+          "Exposed" = "#D55E00",
+          "Moderate" = "#E69F00",
+          "Sheltered" = "#0072B2"
         )
 
         # Generate rose diagram for custom point
@@ -607,9 +637,9 @@ fetch_app <- function(fetch_data, title = NULL) {
             shiny::p(shiny::strong("Exposure: "),
               shiny::span(exposure, style = sprintf("color: %s; font-weight: bold;",
                 switch(exposure,
-                  "Exposed" = "firebrick",
-                  "Moderate" = "goldenrod",
-                  "Sheltered" = "forestgreen"
+                  "Exposed" = "#D55E00",
+                  "Moderate" = "#E69F00",
+                  "Sheltered" = "#0072B2"
                 )
               ))
             ),
@@ -724,8 +754,8 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
     shiny::tags$head(
       shiny::tags$style(shiny::HTML("
         .progress-message { color: #666; font-style: italic; margin: 10px 0; }
-        .error-message { color: firebrick; font-weight: bold; }
-        .success-message { color: forestgreen; font-weight: bold; }
+        .error-message { color: #D55E00; font-weight: bold; font-weight: bold; }
+        .success-message { color: #0072B2; font-weight: bold; font-weight: bold; }
       "))
     ),
     shiny::titlePanel(title),
@@ -800,7 +830,14 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::hr(),
           shiny::h5("Selected Site:"),
           shiny::textOutput("selected_site"),
-          shiny::uiOutput("click_results"),
+          shiny::uiOutput("site_details_upload"),
+          shiny::conditionalPanel(
+            condition = "output.has_click_result_upload == true",
+            shiny::hr(),
+            shiny::h5("Custom Point Analysis:",
+                      style = "color: #B36A00;"),
+            shiny::uiOutput("click_results")
+          ),
           shiny::hr(),
           shiny::h5("Color Legend:"),
           shiny::uiOutput("legend_text"),
@@ -862,6 +899,15 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       !is.null(rv$fetch_data)
     })
     shiny::outputOptions(output, "has_results", suspendWhenHidden = FALSE)
+
+    # Drives the "Custom Point Analysis" conditionalPanel so the user can
+    # see their click-analysis result even after they click a preloaded
+    # marker (whose rose plot fills site_details_upload).
+    output$has_click_result_upload <- shiny::reactive({
+      !is.null(rv$click_result)
+    })
+    shiny::outputOptions(output, "has_click_result_upload",
+                          suspendWhenHidden = FALSE)
 
     # Handle file upload
     shiny::observeEvent(input$file_upload, {
@@ -1006,7 +1052,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
 
     # Color palettes
     exposure_pal <- leaflet::colorFactor(
-      palette = c("firebrick", "goldenrod", "forestgreen"),
+      palette = c("#D55E00", "#E69F00", "#0072B2"),
       levels = c("Exposed", "Moderate", "Sheltered")
     )
 
@@ -1015,7 +1061,7 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       s_m <- input$sheltered_m
       e_m <- input$exposed_m
       leaflet::colorBin(
-        palette = c("forestgreen", "gold", "firebrick"),
+        palette = c("#0072B2", "#E69F00", "#D55E00"),
         domain = c(0, max(e_m * 2, 10000)),
         bins = c(0, s_m, e_m, max(e_m * 10, 50000))
       )
@@ -1026,12 +1072,12 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       s_m <- input$sheltered_m
       e_m <- input$exposed_m
       shiny::tagList(
-        shiny::p(style = "color: firebrick;",
-          sprintf("Red: > %.1f km (Exposed)", e_m / 1000)),
-        shiny::p(style = "color: gold;",
-          sprintf("Gold: %.1f-%.1f km (Moderate)", s_m / 1000, e_m / 1000)),
-        shiny::p(style = "color: forestgreen;",
-          sprintf("Green: < %.1f km (Sheltered)", s_m / 1000))
+        shiny::p(style = "color: #D55E00; font-weight: bold;",
+          sprintf("Exposed: > %.1f km", e_m / 1000)),
+        shiny::p(style = "color: #B36A00; font-weight: bold;",
+          sprintf("Moderate: %.1f-%.1f km", s_m / 1000, e_m / 1000)),
+        shiny::p(style = "color: #0072B2; font-weight: bold;",
+          sprintf("Sheltered: < %.1f km", s_m / 1000))
       )
     })
 
@@ -1149,7 +1195,22 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       }
 
       m <- leaflet::leaflet(results_wgs) |>
-        leaflet::addProviderTiles("Esri.WorldImagery") |>
+        leaflet::addProviderTiles("Esri.WorldImagery", group = "Imagery") |>
+        leaflet::addTiles(group = "OSM") |>
+        leaflet::addTiles(
+          urlTemplate = paste0("https://basemap.nationalmap.gov/arcgis/rest/",
+                                "services/USGSHydroCached/MapServer/tile/",
+                                "{z}/{y}/{x}"),
+          attribution = "USGS The National Map: National Hydrography Dataset",
+          options = leaflet::tileOptions(opacity = 0.8),
+          group = "USGS NHD"
+        ) |>
+        leaflet::addLayersControl(
+          baseGroups = c("Imagery", "OSM"),
+          overlayGroups = "USGS NHD",
+          options = leaflet::layersControlOptions(collapsed = FALSE)
+        ) |>
+        leaflet::hideGroup("USGS NHD") |>
         leaflet::addPolygons(data = lakes_wgs,
                     fill = FALSE, color = "white",
                     weight = 1, opacity = 0.3)
@@ -1250,8 +1311,11 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           )
       }
 
-      # Generate rose plot on demand for sidebar
-      output$click_results <- shiny::renderUI({
+      # Generate rose plot for the selected pre-loaded marker. Render into
+      # output$site_details_upload (the upper sidebar slot) - NOT into
+      # output$click_results, which belongs to the custom-point analysis and
+      # would otherwise be clobbered every time the user clicks a marker.
+      output$site_details_upload <- shiny::renderUI({
         rose_b64 <- make_rose_plot_base64(site_row, site_id)
 
         lake_nm <- if (!is.na(site_row$lake_name)) site_row$lake_name else ""
@@ -1279,9 +1343,9 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
           shiny::p(shiny::strong("Exposure: "),
             shiny::span(site_row$exposure_category, style = sprintf("color: %s; font-weight: bold;",
               switch(as.character(site_row$exposure_category),
-                "Exposed" = "firebrick",
-                "Moderate" = "goldenrod",
-                "Sheltered" = "forestgreen"
+                "Exposed" = "#D55E00",
+                "Moderate" = "#E69F00",
+                "Sheltered" = "#0072B2"
               )
             ))
           ),
@@ -1380,9 +1444,9 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
         )
 
         exp_color <- switch(exposure,
-          "Exposed" = "firebrick",
-          "Moderate" = "goldenrod",
-          "Sheltered" = "forestgreen"
+          "Exposed" = "#D55E00",
+          "Moderate" = "#E69F00",
+          "Sheltered" = "#0072B2"
         )
 
         # Generate rose for custom point and explicitly rebind output$click_results
