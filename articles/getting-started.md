@@ -26,30 +26,32 @@ install.packages("lakefetch")
 
 library(lakefetch)
 
-# From CSV file
-sites <- load_sites(system.file("extdata", "sample_sites.csv", package = "lakefetch"))
-
-# Or create manually
-sites <- data.frame(
-  Site = c("Site_A", "Site_B", "Site_C"),
-  latitude = c(43.42, 43.43, 43.41),
-  longitude = c(-73.69, -73.68, -73.70)
-)
-sites <- load_sites(sites)
+# From the installed example CSV (two sites on Blue Mountain Lake, NY)
+sites <- load_sites(system.file("extdata", "sample_sites.csv",
+                                package = "lakefetch"))
 ```
 
-Your CSV should have columns for site names and coordinates. Column
-names starting with “lat” and “lon” are automatically detected.
+You can also pass a data.frame directly to
+[`load_sites()`](https://jeremylfarrell.github.io/lakefetch/reference/load_sites.md).
+CSV column names starting with “lat” and “lon” (e.g., “latitude”,
+“longitude”) are detected automatically; use the `lat_col` / `lon_col`
+arguments to override.
 
 ### 2. Get lake boundary
 
 ``` r
 
-# Automatically download from OpenStreetMap
+# Automatically download from OpenStreetMap (requires network)
 lake <- get_lake_boundary(sites)
 
-# Or load from a local shapefile
-lake <- get_lake_boundary(sites, file = "lake_boundary.shp")
+# For very large or complex lakes, increase the Overpass timeout and
+# optionally simplify the polygon for faster downstream computation:
+lake <- get_lake_boundary(sites,
+                          timeout = 300,
+                          simplify_tolerance_m = 100)
+
+# Or load a local shapefile / GeoPackage instead of querying OSM
+lake <- get_lake_boundary(sites, file = "path/to/lake_boundary.gpkg")
 ```
 
 ### 3. Calculate fetch
@@ -72,9 +74,14 @@ plot_fetch_map(results)
 # Bar chart
 plot_fetch_bars(results)
 
-# Interactive app
+# Interactive app (requires the shiny, leaflet, base64enc packages)
 fetch_app(results)
 ```
+
+> The Quick Start chunks above are not evaluated when the vignette is
+> built because they require an internet connection to OpenStreetMap and
+> (for the Shiny app) the optional `shiny`/`leaflet` packages. To run
+> them interactively, simply paste them into an R session.
 
 ## Understanding the Results
 

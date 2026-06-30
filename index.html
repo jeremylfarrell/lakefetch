@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -63,7 +63,8 @@
 <h2 id="motivation">Motivation<a class="anchor" aria-label="anchor" href="#motivation"></a>
 </h2>
 <p><strong>Fetch</strong> is the unobstructed distance that wind can travel across open water. It is a key physical driver in lakes because it controls wave height, wave energy, and shoreline exposure. Fetch influences sediment resuspension, nutrient cycling, littoral habitat structure, and the distribution of aquatic organisms. Despite its importance, calculating fetch for inland lakes has required either manual GIS work or tools designed for coastal/marine environments that do not handle the irregular shorelines and small spatial scales typical of lakes.</p>
-<p><strong>lakefetch</strong> fills this gap by providing an end-to-end R workflow for freshwater fetch analysis: it downloads lake boundary polygons from OpenStreetMap, calculates directional fetch via a ray-casting algorithm, classifies sites by wave exposure, and optionally integrates weather data to estimate cumulative wave energy. The package is designed for batch processing across many lakes and sites, making it practical for large-scale ecological and limnological studies.</p>
+<p><strong>lakefetch</strong> fills this gap by providing an end-to-end R workflow for freshwater fetch analysis: it downloads lake boundary polygons from OpenStreetMap, calculates directional fetch via a ray-casting algorithm, classifies sites by wave exposure, and optionally integrates weather data to estimate cumulative wave energy. It can also pull hydrological context (outlets, inlets, watershed area, connectivity) from the US National Hydrography Dataset (NHD) via the <a href="https://cran.r-project.org/package=nhdplusTools" class="external-link">nhdplusTools</a> package. The package is designed for batch processing across many lakes and sites, making it practical for large-scale ecological and limnological studies.</p>
+<p>Other R packages calculate fetch for related use cases. <a href="https://cran.r-project.org/package=fetchR" class="external-link">fetchR</a>, <a href="https://cran.r-project.org/package=waver" class="external-link">waver</a>, and <a href="https://github.com/blasee/windfetch" class="external-link">windfetch</a> target coastal/marine environments and require the user to supply coastline polygons; <a href="https://cran.r-project.org/package=lakemorpho" class="external-link">lakemorpho</a> computes fetch as one of many morphometric parameters on a single user-supplied lake polygon. lakefetch is distinguished by its lake focus and automatic OpenStreetMap-based boundary download for batch workflows. See <a href="#similar-packages">Similar Packages</a> below for a detailed comparison.</p>
 <div class="section level3">
 <h3 id="spatial-domain">Spatial Domain<a class="anchor" aria-label="anchor" href="#spatial-domain"></a>
 </h3>

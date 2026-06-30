@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -93,28 +93,29 @@ resuspension, and habitat characteristics.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jeremylfarrell.github.io/lakefetch/">lakefetch</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># From CSV file</span></span>
-<span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_sites.html">load_sites</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"sample_sites.csv"</span>, package <span class="op">=</span> <span class="st">"lakefetch"</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Or create manually</span></span>
-<span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  Site <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Site_A"</span>, <span class="st">"Site_B"</span>, <span class="st">"Site_C"</span><span class="op">)</span>,</span>
-<span>  latitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">43.42</span>, <span class="fl">43.43</span>, <span class="fl">43.41</span><span class="op">)</span>,</span>
-<span>  longitude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">73.69</span>, <span class="op">-</span><span class="fl">73.68</span>, <span class="op">-</span><span class="fl">73.70</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_sites.html">load_sites</a></span><span class="op">(</span><span class="va">sites</span><span class="op">)</span></span></code></pre></div>
-<p>Your CSV should have columns for site names and coordinates. Column
-names starting with “lat” and “lon” are automatically detected.</p>
+<span><span class="co"># From the installed example CSV (two sites on Blue Mountain Lake, NY)</span></span>
+<span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_sites.html">load_sites</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"sample_sites.csv"</span>,</span>
+<span>                                package <span class="op">=</span> <span class="st">"lakefetch"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>You can also pass a data.frame directly to <code><a href="../reference/load_sites.html">load_sites()</a></code>.
+CSV column names starting with “lat” and “lon” (e.g., “latitude”,
+“longitude”) are detected automatically; use the <code>lat_col</code> /
+<code>lon_col</code> arguments to override.</p>
 </div>
 <div class="section level3">
 <h3 id="get-lake-boundary">2. Get lake boundary<a class="anchor" aria-label="anchor" href="#get-lake-boundary"></a>
 </h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Automatically download from OpenStreetMap</span></span>
+<code class="sourceCode R"><span><span class="co"># Automatically download from OpenStreetMap (requires network)</span></span>
 <span><span class="va">lake</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_lake_boundary.html">get_lake_boundary</a></span><span class="op">(</span><span class="va">sites</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Or load from a local shapefile</span></span>
-<span><span class="va">lake</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_lake_boundary.html">get_lake_boundary</a></span><span class="op">(</span><span class="va">sites</span>, file <span class="op">=</span> <span class="st">"lake_boundary.shp"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># For very large or complex lakes, increase the Overpass timeout and</span></span>
+<span><span class="co"># optionally simplify the polygon for faster downstream computation:</span></span>
+<span><span class="va">lake</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_lake_boundary.html">get_lake_boundary</a></span><span class="op">(</span><span class="va">sites</span>,</span>
+<span>                          timeout <span class="op">=</span> <span class="fl">300</span>,</span>
+<span>                          simplify_tolerance_m <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Or load a local shapefile / GeoPackage instead of querying OSM</span></span>
+<span><span class="va">lake</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_lake_boundary.html">get_lake_boundary</a></span><span class="op">(</span><span class="va">sites</span>, file <span class="op">=</span> <span class="st">"path/to/lake_boundary.gpkg"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="calculate-fetch">3. Calculate fetch<a class="anchor" aria-label="anchor" href="#calculate-fetch"></a>
@@ -135,8 +136,15 @@ names starting with “lat” and “lon” are automatically detected.</p>
 <span><span class="co"># Bar chart</span></span>
 <span><span class="fu"><a href="../reference/plot_fetch_bars.html">plot_fetch_bars</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Interactive app</span></span>
+<span><span class="co"># Interactive app (requires the shiny, leaflet, base64enc packages)</span></span>
 <span><span class="fu"><a href="../reference/fetch_app.html">fetch_app</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
+<blockquote>
+<p>The Quick Start chunks above are not evaluated when the vignette is
+built because they require an internet connection to OpenStreetMap and
+(for the Shiny app) the optional <code>shiny</code>/<code>leaflet</code>
+packages. To run them interactively, simply paste them into an R
+session.</p>
+</blockquote>
 </div>
 </div>
 <div class="section level2">

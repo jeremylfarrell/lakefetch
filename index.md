@@ -18,9 +18,24 @@ irregular shorelines and small spatial scales typical of lakes.
 freshwater fetch analysis: it downloads lake boundary polygons from
 OpenStreetMap, calculates directional fetch via a ray-casting algorithm,
 classifies sites by wave exposure, and optionally integrates weather
-data to estimate cumulative wave energy. The package is designed for
-batch processing across many lakes and sites, making it practical for
-large-scale ecological and limnological studies.
+data to estimate cumulative wave energy. It can also pull hydrological
+context (outlets, inlets, watershed area, connectivity) from the US
+National Hydrography Dataset (NHD) via the
+[nhdplusTools](https://cran.r-project.org/package=nhdplusTools) package.
+The package is designed for batch processing across many lakes and
+sites, making it practical for large-scale ecological and limnological
+studies.
+
+Other R packages calculate fetch for related use cases.
+[fetchR](https://cran.r-project.org/package=fetchR),
+[waver](https://cran.r-project.org/package=waver), and
+[windfetch](https://github.com/blasee/windfetch) target coastal/marine
+environments and require the user to supply coastline polygons;
+[lakemorpho](https://cran.r-project.org/package=lakemorpho) computes
+fetch as one of many morphometric parameters on a single user-supplied
+lake polygon. lakefetch is distinguished by its lake focus and automatic
+OpenStreetMap-based boundary download for batch workflows. See [Similar
+Packages](#similar-packages) below for a detailed comparison.
 
 ### Spatial Domain
 

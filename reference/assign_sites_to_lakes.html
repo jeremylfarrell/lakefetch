@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,11 @@
 
 
 <dt id="arg-tolerance-m">tolerance_m<a class="anchor" aria-label="anchor" href="#arg-tolerance-m"></a></dt>
-<dd><p>Buffer distance for matching sites near lake edges</p></dd>
+<dd><p>Buffer distance in meters for matching sites that fall
+just outside lake polygons (e.g., due to GPS noise or coarse OSM
+boundaries). Default is the value from <code><a href="lakefetch_options.html">lakefetch_options()</a></code> (50 m).
+For datasets with appreciable GPS error or for very coarsely mapped
+shorelines, try 100-500 m.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -75,11 +79,14 @@
 <span class="r-in"><span><span class="va">sites</span> <span class="op">&lt;-</span> <span class="fu"><a href="load_sites.html">load_sites</a></span><span class="op">(</span><span class="va">csv_path</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">lake_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="get_lake_boundary.html">get_lake_boundary</a></span><span class="op">(</span><span class="va">sites</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Assign sites to their containing lakes</span></span></span>
+<span class="r-in"><span><span class="co"># Assign sites to their containing lakes. Default tolerance (50 m) is</span></span></span>
+<span class="r-in"><span><span class="co"># appropriate for sites with accurate coordinates that fall inside the</span></span></span>
+<span class="r-in"><span><span class="co"># lake polygon. If your sites are near the shoreline or your GPS error is</span></span></span>
+<span class="r-in"><span><span class="co"># larger, increase tolerance_m (e.g., 200-500 m).</span></span></span>
 <span class="r-in"><span><span class="va">sites_assigned</span> <span class="op">&lt;-</span> <span class="fu">assign_sites_to_lakes</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">lake_data</span><span class="op">$</span><span class="va">sites</span>,</span></span>
 <span class="r-in"><span>  <span class="va">lake_data</span><span class="op">$</span><span class="va">all_lakes</span>,</span></span>
-<span class="r-in"><span>  tolerance_m <span class="op">=</span> <span class="fl">50</span></span></span>
+<span class="r-in"><span>  tolerance_m <span class="op">=</span> <span class="fl">200</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Check assignments</span></span></span>

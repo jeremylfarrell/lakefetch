@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,39 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.5" id="lakefetch-015">lakefetch 0.1.5<a class="anchor" aria-label="anchor" href="#lakefetch-015"></a></h2>
+<p>Changes in response to the second rOpenSci peer review by Khondula (ropensci/software-review#762).</p>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-5">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-5"></a></h3>
+<ul><li>
+<strong>Invalid UTM EPSG when sf input is in a projected CRS</strong>: When a user passed an sf object in a non-WGS84 CRS (e.g., the bundled <code>example_lake</code> in UTM zone 18N) to <code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code>, the UTM zone detection was performed on the raw projected coordinates and produced nonsensical EPSG codes such as <code>EPSG:32683364</code>. The UTM zone is now computed from the centroid of the WGS84-transformed sites instead of the raw input.</li>
+<li>
+<strong>Sites unassigned to lakes now emit a warning, not just a message</strong>: When <code><a href="../reference/assign_sites_to_lakes.html">assign_sites_to_lakes()</a></code> cannot match one or more sites, it now emits a <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code> in addition to the diagnostic messages. The previous message-only behavior could be missed in console output, leading users to believe the workflow had fully succeeded when in fact some sites had NA fetch values.</li>
+<li>
+<strong>Getting-started vignette runnable end-to-end</strong>: The Quick Start chunks were reorganized so the <code>sites</code> object is not overwritten with mismatched coordinates, and the network-dependent chunks are explicitly marked <code>eval = FALSE</code> with a note explaining how to run them interactively.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="improvements-0-1-5">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-1-5"></a></h3>
+<ul><li>
+<strong>Flexible column-name detection for <code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code></strong>: The function now auto-detects latitude / longitude columns on data.frame input the same way <code><a href="../reference/load_sites.html">load_sites()</a></code> does (accepts “lat” / “latitude” / “y” and “lon” / “long” / “longitude” / “lng” / “x”, case-insensitive). Previously it required the exact column names produced by <code><a href="../reference/load_sites.html">load_sites()</a></code>.</li>
+<li>
+<strong>Faster downloads for spread-out named lakes</strong>: When all sites have a known lake name and the site spread exceeds 0.5 degrees, <code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code> now issues a single name-filtered Overpass query covering the union bounding box instead of looping through per-cluster broad queries. For datasets like <code>wisconsin_lakes</code> (3 lakes spread across ~1 degree), this typically reduces download time from many minutes to under a minute.</li>
+<li>
+<strong><code><a href="../reference/add_weather_context.html">add_weather_context()</a></code> docs expanded</strong>: The function documentation now describes what the function does (queries Open-Meteo, combines with fetch, integrates wave energy), and the <code>windows_hours</code> argument is documented explicitly (per-window column names, intended use as look-back windows ending at each sample’s <code>datetime</code>).</li>
+<li>
+<strong><code><a href="../reference/assign_sites_to_lakes.html">assign_sites_to_lakes()</a></code> <code>tolerance_m</code> documented</strong>: The default (50 m via <code><a href="../reference/lakefetch_options.html">lakefetch_options()</a></code>) is now explained, with guidance to increase it (200-500 m) for sites with appreciable GPS error or near-shore coordinates. The example uses <code>tolerance_m = 200</code> so users see a working invocation.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="shiny-app-improvements-0-1-5">Shiny app improvements<a class="anchor" aria-label="anchor" href="#shiny-app-improvements-0-1-5"></a></h3>
+<ul><li>
+<strong>Colorblind-friendly palette</strong>: Exposure markers, rays, and legend text now use the Okabe-Ito palette (blue / orange / vermillion) instead of green / gold / red. The previous palette was hard to distinguish for users with red-green color vision deficiency, and the bright yellow legend text on the default sidebar background was hard to read.</li>
+<li>
+<strong>Layer switcher (OSM / Imagery / USGS NHD)</strong>: The map now offers Esri World Imagery and OpenStreetMap as switchable base layers, with the USGS National Hydrography Dataset hosted overlay available as a toggle.</li>
+<li>
+<strong>Custom point analysis no longer clobbered by marker clicks</strong>: In <code><a href="../reference/fetch_app_upload.html">fetch_app_upload()</a></code>, clicking a pre-loaded site marker previously wrote the marker’s rose plot into the same sidebar slot as the custom-point analysis result, hiding it. The pre-loaded site details now have their own sidebar slot and the custom point analysis stays visible.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.4" id="lakefetch-014">lakefetch 0.1.4<a class="anchor" aria-label="anchor" href="#lakefetch-014"></a></h2>
 <p>Changes in response to the rOpenSci peer review by Jorrit Mesman (ropensci/software-review#762).</p>
