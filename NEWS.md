@@ -1,3 +1,24 @@
+# lakefetch 0.1.7
+
+## Bug fixes
+
+* **`plot_fetch_rose()` overplotting: real fix**: The v0.1.6 fix (setting
+  `par(new = FALSE)`) was insufficient. The underlying cause is that
+  ggplot2 (used by `plot_fetch_map()` and `plot_fetch_bars()`, and
+  internally by `fetch_app()`) leaves an active grid viewport on the
+  device. Base R `plot.new()` cannot clear a grid viewport, so
+  subsequent rose diagrams were drawn inside the ggplot's coordinate
+  system, on top of the previous content. `plot_fetch_rose()` now calls
+  `grid::grid.newpage()` at the start to reset the device state, then
+  proceeds with base R plotting into a clean region.
+* **`wisconsin_lakes` Geneva Lake coordinates**: All three Geneva Lake
+  sites in the built-in dataset (`Geneva_E`, `Geneva_W`, `Geneva_Center`)
+  had coordinates on land near the shore rather than in the water. The
+  OSM polygon for Lake Geneva extends further south (down to ~42.5455 N)
+  and further west (out to ~-88.5727 W) than the previous coordinates
+  assumed. All three sites now sit inside the polygon, so
+  `assign_sites_to_lakes()` no longer skips them.
+
 # lakefetch 0.1.6
 
 Small follow-up fixes after Khondula's second review pass on v0.1.5

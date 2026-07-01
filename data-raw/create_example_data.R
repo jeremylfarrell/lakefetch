@@ -108,8 +108,8 @@ wisconsin_lakes <- data.frame(
     43.1125, 43.0756, 43.0995,
     # Lake Monona
     43.0634, 43.0589,
-    # Geneva Lake
-    42.5912, 42.5834, 42.5878
+    # Geneva Lake (all three verified inside the OSM polygon; see notes below)
+    42.584896, 42.573359, 42.566069
   ),
   longitude = c(
     # Lake Mendota
@@ -117,7 +117,12 @@ wisconsin_lakes <- data.frame(
     # Lake Monona
     -89.3612, -89.3789,
     # Geneva Lake
-    -88.4312, -88.5123, -88.4756
+    #   Geneva_E:      northeast area of the lake
+    #   Geneva_W:      western portion
+    #   Geneva_Center: south-central portion
+    # The lake's actual OSM bbox is 42.5455-42.5914 N, -88.5727 to -88.4329 W;
+    # earlier coordinates in this dataset were on land near the shore.
+    -88.442054, -88.535460, -88.501107
   ),
   stringsAsFactors = FALSE
 )

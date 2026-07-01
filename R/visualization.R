@@ -129,11 +129,18 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #' @export
 plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 
+  # After a ggplot2 render (plot_fetch_map, plot_fetch_bars) or after
+  # fetch_app() closes, the grid graphics system leaves an active viewport
+  # on the current device. Base R plot.new() cannot clear that viewport,
+  # so the rose ends up drawn on top of whatever was there. Explicitly
+  # advance the grid page first to reset the device to a clean state,
+  # then base R plotting draws into a fresh region.
+  if (grDevices::dev.cur() > 1L) {
+    tryCatch(grid::grid.newpage(), error = function(e) NULL)
+  }
+
   oldpar <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(oldpar))
-  # Force a fresh plot region. Without this, if a previous call left
-  # par("new") = TRUE (e.g., after fetch_app() closed), the rose polygon
-  # would draw on top of whatever was in the current device.
   graphics::par(new = FALSE)
 
   results <- fetch_data$results
