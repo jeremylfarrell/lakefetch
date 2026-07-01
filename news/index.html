@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,16 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.7" id="lakefetch-017">lakefetch 0.1.7<a class="anchor" aria-label="anchor" href="#lakefetch-017"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-7">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-7"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> overplotting: real fix</strong>: The v0.1.6 fix (setting <code>par(new = FALSE)</code>) was insufficient. The underlying cause is that ggplot2 (used by <code><a href="../reference/plot_fetch_map.html">plot_fetch_map()</a></code> and <code><a href="../reference/plot_fetch_bars.html">plot_fetch_bars()</a></code>, and internally by <code><a href="../reference/fetch_app.html">fetch_app()</a></code>) leaves an active grid viewport on the device. Base R <code><a href="https://rdrr.io/r/graphics/frame.html" class="external-link">plot.new()</a></code> cannot clear a grid viewport, so subsequent rose diagrams were drawn inside the ggplot’s coordinate system, on top of the previous content. <code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> now calls <code><a href="https://rdrr.io/r/grid/grid.newpage.html" class="external-link">grid::grid.newpage()</a></code> at the start to reset the device state, then proceeds with base R plotting into a clean region.</li>
+<li>
+<strong><code>wisconsin_lakes</code> Geneva Lake coordinates</strong>: All three Geneva Lake sites in the built-in dataset (<code>Geneva_E</code>, <code>Geneva_W</code>, <code>Geneva_Center</code>) had coordinates on land near the shore rather than in the water. The OSM polygon for Lake Geneva extends further south (down to ~42.5455 N) and further west (out to ~-88.5727 W) than the previous coordinates assumed. All three sites now sit inside the polygon, so <code><a href="../reference/assign_sites_to_lakes.html">assign_sites_to_lakes()</a></code> no longer skips them.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.6" id="lakefetch-016">lakefetch 0.1.6<a class="anchor" aria-label="anchor" href="#lakefetch-016"></a></h2>
 <p>Small follow-up fixes after Khondula’s second review pass on v0.1.5 (ropensci/software-review#762).</p>

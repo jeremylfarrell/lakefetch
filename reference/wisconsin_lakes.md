@@ -53,12 +53,12 @@ data(wisconsin_lakes)
 # View the data
 head(wisconsin_lakes)
 #>           Site    lake.name latitude longitude
-#> 1    Mendota_N Lake Mendota  43.1125  -89.4234
-#> 2    Mendota_S Lake Mendota  43.0756  -89.4012
-#> 3 Mendota_Deep Lake Mendota  43.0995  -89.4045
-#> 4     Monona_1  Lake Monona  43.0634  -89.3612
-#> 5     Monona_2  Lake Monona  43.0589  -89.3789
-#> 6     Geneva_E  Geneva Lake  42.5912  -88.4312
+#> 1    Mendota_N Lake Mendota  43.1125 -89.42340
+#> 2    Mendota_S Lake Mendota  43.0756 -89.40120
+#> 3 Mendota_Deep Lake Mendota  43.0995 -89.40450
+#> 4     Monona_1  Lake Monona  43.0634 -89.36120
+#> 5     Monona_2  Lake Monona  43.0589 -89.37890
+#> 6     Geneva_E  Geneva Lake  42.5849 -88.44205
 
 if (FALSE) { # interactive()
 # Use with lakefetch (requires internet connection)

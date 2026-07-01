@@ -1,5 +1,35 @@
 # Changelog
 
+## lakefetch 0.1.7
+
+### Bug fixes
+
+- **[`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)
+  overplotting: real fix**: The v0.1.6 fix (setting `par(new = FALSE)`)
+  was insufficient. The underlying cause is that ggplot2 (used by
+  [`plot_fetch_map()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_map.md)
+  and
+  [`plot_fetch_bars()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_bars.md),
+  and internally by
+  [`fetch_app()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app.md))
+  leaves an active grid viewport on the device. Base R
+  [`plot.new()`](https://rdrr.io/r/graphics/frame.html) cannot clear a
+  grid viewport, so subsequent rose diagrams were drawn inside the
+  ggplot’s coordinate system, on top of the previous content.
+  [`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)
+  now calls
+  [`grid::grid.newpage()`](https://rdrr.io/r/grid/grid.newpage.html) at
+  the start to reset the device state, then proceeds with base R
+  plotting into a clean region.
+- **`wisconsin_lakes` Geneva Lake coordinates**: All three Geneva Lake
+  sites in the built-in dataset (`Geneva_E`, `Geneva_W`,
+  `Geneva_Center`) had coordinates on land near the shore rather than in
+  the water. The OSM polygon for Lake Geneva extends further south (down
+  to ~42.5455 N) and further west (out to ~-88.5727 W) than the previous
+  coordinates assumed. All three sites now sit inside the polygon, so
+  [`assign_sites_to_lakes()`](https://jeremylfarrell.github.io/lakefetch/reference/assign_sites_to_lakes.md)
+  no longer skips them.
+
 ## lakefetch 0.1.6
 
 Small follow-up fixes after Khondula’s second review pass on v0.1.5
