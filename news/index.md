@@ -1,5 +1,35 @@
 # Changelog
 
+## lakefetch 0.1.6
+
+Small follow-up fixes after Khondula’s second review pass on v0.1.5
+(ropensci/software-review#762).
+
+### Bug fixes
+
+- **[`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)
+  overplotting after Shiny apps**: Running
+  [`plot_fetch_rose()`](https://jeremylfarrell.github.io/lakefetch/reference/plot_fetch_rose.md)
+  immediately after
+  [`fetch_app()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app.md)
+  could produce a rose that overlaid the previous plot or lacked a
+  background, because Shiny left the graphics device with
+  `par("new") = TRUE`. The function now explicitly resets
+  `par(new = FALSE)` before drawing.
+
+### Improvements
+
+- **Rose diagram color changed from blue to purple**: The rose polygon
+  is now filled in semi-transparent purple with a `#7B3E9E` border,
+  matching the common wind-rose convention and avoiding visual confusion
+  with the blue lake polygons rendered underneath in the Shiny map.
+
+### Documentation
+
+- **`wisconsin_lakes` description in README**: Corrected from “Lake
+  boundary polygons from Wisconsin” (misleading) to “Sampling sites on
+  three Wisconsin lakes (Mendota, Monona, Geneva)”.
+
 ## lakefetch 0.1.5
 
 Changes in response to the second rOpenSci peer review by Khondula

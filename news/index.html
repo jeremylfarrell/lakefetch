@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,25 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.6" id="lakefetch-016">lakefetch 0.1.6<a class="anchor" aria-label="anchor" href="#lakefetch-016"></a></h2>
+<p>Small follow-up fixes after Khondula’s second review pass on v0.1.5 (ropensci/software-review#762).</p>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-6">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-6"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> overplotting after Shiny apps</strong>: Running <code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> immediately after <code><a href="../reference/fetch_app.html">fetch_app()</a></code> could produce a rose that overlaid the previous plot or lacked a background, because Shiny left the graphics device with <code>par("new") = TRUE</code>. The function now explicitly resets <code>par(new = FALSE)</code> before drawing.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="improvements-0-1-6">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-1-6"></a></h3>
+<ul><li>
+<strong>Rose diagram color changed from blue to purple</strong>: The rose polygon is now filled in semi-transparent purple with a <code>#7B3E9E</code> border, matching the common wind-rose convention and avoiding visual confusion with the blue lake polygons rendered underneath in the Shiny map.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-1-6">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-1-6"></a></h3>
+<ul><li>
+<strong><code>wisconsin_lakes</code> description in README</strong>: Corrected from “Lake boundary polygons from Wisconsin” (misleading) to “Sampling sites on three Wisconsin lakes (Mendota, Monona, Geneva)”.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.5" id="lakefetch-015">lakefetch 0.1.5<a class="anchor" aria-label="anchor" href="#lakefetch-015"></a></h2>
 <p>Changes in response to the second rOpenSci peer review by Khondula (ropensci/software-review#762).</p>
