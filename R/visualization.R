@@ -131,6 +131,10 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 
   oldpar <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(oldpar))
+  # Force a fresh plot region. Without this, if a previous call left
+  # par("new") = TRUE (e.g., after fetch_app() closed), the rose polygon
+  # would draw on top of whatever was in the current device.
+  graphics::par(new = FALSE)
 
   results <- fetch_data$results
 
@@ -200,8 +204,11 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
   # Draw fetch polygon
   x_pts <- fetch_norm * cos(angles_rad)
   y_pts <- fetch_norm * sin(angles_rad)
+  # Uses purple rather than blue to avoid visual confusion with the lake
+  # polygon underlays in the Shiny map.
   graphics::polygon(c(x_pts, x_pts[1]), c(y_pts, y_pts[1]),
-          col = grDevices::rgb(0.2, 0.5, 0.8, 0.4), border = "steelblue", lwd = 2)
+          col = grDevices::rgb(0.48, 0.24, 0.62, 0.4),
+          border = "#7B3E9E", lwd = 2)
 
   # Add cardinal directions
   graphics::text(0, 1.15, "N", cex = 0.8, font = 2)
@@ -353,8 +360,11 @@ make_rose_plot_base64 <- function(site_row, site_name) {
   # Draw fetch polygon
   x_pts <- fetch_norm * cos(angles_rad)
   y_pts <- fetch_norm * sin(angles_rad)
+  # Uses purple rather than blue to avoid visual confusion with the lake
+  # polygon underlays in the Shiny map.
   graphics::polygon(c(x_pts, x_pts[1]), c(y_pts, y_pts[1]),
-          col = grDevices::rgb(0.2, 0.5, 0.8, 0.4), border = "steelblue", lwd = 2)
+          col = grDevices::rgb(0.48, 0.24, 0.62, 0.4),
+          border = "#7B3E9E", lwd = 2)
 
   # Add cardinal directions
   graphics::text(0, 1.15, "N", cex = 0.8, font = 2)

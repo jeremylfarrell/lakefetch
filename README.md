@@ -159,7 +159,7 @@ Several R packages calculate fetch or wave exposure, but they target different u
 The package includes three built-in datasets:
 
 - `adirondack_sites`: Sampling sites from lakes in the Adirondack region of New York
-- `wisconsin_lakes`: Lake boundary polygons from Wisconsin
+- `wisconsin_lakes`: Sampling sites on three Wisconsin lakes (Mendota, Monona, Geneva)
 - `example_lake`: A single lake polygon for testing and examples
 
 ## References
