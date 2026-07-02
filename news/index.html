@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.7</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.8</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,14 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.8" id="lakefetch-018">lakefetch 0.1.8<a class="anchor" aria-label="anchor" href="#lakefetch-018"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-8">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-8"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> overplotting: proper fix</strong>: The v0.1.7 attempt using <code><a href="https://rdrr.io/r/grid/grid.newpage.html" class="external-link">grid::grid.newpage()</a></code> did not resolve the overplotting on all platforms. The reviewer’s original workaround (calling <code><a href="https://rdrr.io/r/grDevices/dev.html" class="external-link">dev.off()</a></code> before the rose) reliably works, so <code><a href="../reference/plot_fetch_rose.html">plot_fetch_rose()</a></code> now applies that automatically: on entry, it closes the current <em>interactive</em> graphics device (RStudioGD / windows / X11 / quartz) if one is open, causing the next plotting call to reopen a fresh device. File-writing devices that the user opened themselves (png / pdf / svg / etc.) are never closed by this reset.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.7" id="lakefetch-017">lakefetch 0.1.7<a class="anchor" aria-label="anchor" href="#lakefetch-017"></a></h2>
 <div class="section level3">
