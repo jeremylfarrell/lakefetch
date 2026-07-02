@@ -130,13 +130,22 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 plot_fetch_rose <- function(fetch_data, site, title = NULL) {
 
   # After a ggplot2 render (plot_fetch_map, plot_fetch_bars) or after
-  # fetch_app() closes, the grid graphics system leaves an active viewport
-  # on the current device. Base R plot.new() cannot clear that viewport,
-  # so the rose ends up drawn on top of whatever was there. Explicitly
-  # advance the grid page first to reset the device to a clean state,
-  # then base R plotting draws into a fresh region.
+  # fetch_app() closes, the graphics device is left in a state (grid
+  # viewport active, par$new leftover, etc.) that base R plot.new() cannot
+  # fully reset. The reviewer confirmed that a manual dev.off() between
+  # the two plots fixes the overplotting, so we do it here automatically.
+  # The next plotting call reopens a fresh device.
+  #
+  # Only close *interactive* / screen devices - never a file-writing device
+  # that the user opened intentionally (png, pdf, svg, etc.), or we would
+  # silently truncate their output.
   if (grDevices::dev.cur() > 1L) {
-    tryCatch(grid::grid.newpage(), error = function(e) NULL)
+    dev_name <- names(grDevices::dev.cur())
+    interactive_devs <- c("RStudioGD", "windows", "X11", "X11cairo",
+                          "quartz", "null device")
+    if (isTRUE(dev_name %in% interactive_devs)) {
+      grDevices::dev.off()
+    }
   }
 
   oldpar <- graphics::par(no.readonly = TRUE)

@@ -1,3 +1,17 @@
+# lakefetch 0.1.8
+
+## Bug fixes
+
+* **`plot_fetch_rose()` overplotting: proper fix**: The v0.1.7 attempt
+  using `grid::grid.newpage()` did not resolve the overplotting on all
+  platforms. The reviewer's original workaround (calling `dev.off()`
+  before the rose) reliably works, so `plot_fetch_rose()` now applies
+  that automatically: on entry, it closes the current *interactive*
+  graphics device (RStudioGD / windows / X11 / quartz) if one is open,
+  causing the next plotting call to reopen a fresh device. File-writing
+  devices that the user opened themselves (png / pdf / svg / etc.) are
+  never closed by this reset.
+
 # lakefetch 0.1.7
 
 ## Bug fixes
