@@ -171,10 +171,35 @@ query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3,
     bbox["top"]    <- cy + min_span / 2
   }
 
+  # Errors we should NOT retry, because retrying immediately just wastes
+  # minutes on osmdata's own 60-second rate-limit backoff:
+  #   - "arguments imply differing number of rows" (deterministic osmdata
+  #     parse bug on certain Overpass responses)
+  #   - HTTP 429 Too Many Requests (server is explicitly asking us to
+  #     back off; hammering it faster does not help)
+  is_fatal <- function(msg) {
+    if (is.null(msg)) return(FALSE)
+    grepl("arguments imply differing number of rows", msg, fixed = TRUE) ||
+      grepl("429", msg, fixed = TRUE)
+  }
+
+  # Wall-clock budget so a completely broken Overpass session can never
+  # keep the user waiting more than a couple of minutes.
+  outer_start <- Sys.time()
+  max_wall_seconds <- 120
+
   for (attempt in seq_len(max_attempts)) {
+    if (as.numeric(difftime(Sys.time(), outer_start, units = "secs")) >
+        max_wall_seconds) {
+      message("    Aborting: exceeded ", max_wall_seconds,
+              "s wall-clock budget for name-filtered query")
+      break
+    }
+
     server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
 
-    tryCatch({
+    err_msg <- NULL
+    result <- tryCatch({
       osmdata::set_overpass_url(server)
       osm_query <- osmdata::opq(bbox = bbox, timeout = timeout)
       osm_query <- osmdata::add_osm_feature(osm_query,
@@ -182,24 +207,34 @@ query_osm_by_name <- function(bbox, names, overpass_servers, max_attempts = 3,
       osm_query <- osmdata::add_osm_feature(osm_query,
                                              key = "name", value = name_pattern,
                                              value_exact = FALSE)
-      result <- osmdata::osmdata_sf(osm_query)
-      osmdata::set_overpass_url(overpass_servers[1])
-      return(result)
+      osmdata::osmdata_sf(osm_query)
     }, error = function(e) {
-      msg <- conditionMessage(e)
-      if (attempt < max_attempts) {
-        if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
-          wait_time <- attempt * 5
-          message("    Server error, trying another server in ", wait_time, "s...")
-          Sys.sleep(wait_time)
-        } else {
-          message("    Error: ", msg)
-        }
-      } else {
-        message("    Failed after ", max_attempts, " attempts: ", msg)
-      }
+      err_msg <<- conditionMessage(e)
       NULL
     })
+
+    if (!is.null(result)) {
+      osmdata::set_overpass_url(overpass_servers[1])
+      return(result)
+    }
+
+    if (is_fatal(err_msg)) {
+      message("    Overpass error (not retryable here): ", err_msg)
+      break
+    }
+
+    if (attempt < max_attempts) {
+      if (grepl("500|502|503|504|timeout|Timeout",
+                err_msg, ignore.case = TRUE)) {
+        wait_time <- attempt * 5
+        message("    Server error, trying another server in ", wait_time, "s...")
+        Sys.sleep(wait_time)
+      } else {
+        message("    Error: ", err_msg)
+      }
+    } else {
+      message("    Failed after ", max_attempts, " attempts: ", err_msg)
+    }
   }
   tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
   return(NULL)
@@ -229,33 +264,65 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
     )
   }
 
+  # Errors that are deterministic and should not be retried (see the
+  # comment in query_osm_by_name for details).
+  is_fatal <- function(msg) {
+    if (is.null(msg)) return(FALSE)
+    grepl("arguments imply differing number of rows", msg, fixed = TRUE) ||
+      grepl("429", msg, fixed = TRUE)
+  }
+
   # Helper to query OSM with retries across multiple servers
   query_osm_robust <- function(bbox, key, value, max_attempts = 3) {
+    # Wall-clock budget per query type. Combined with the fatal-error
+    # short-circuit above, this caps total OSM wait to a couple of minutes
+    # even if Overpass is completely broken.
+    outer_start <- Sys.time()
+    max_wall_seconds <- 90
+
     for (attempt in seq_len(max_attempts)) {
+      if (as.numeric(difftime(Sys.time(), outer_start, units = "secs")) >
+          max_wall_seconds) {
+        message("    Aborting: exceeded ", max_wall_seconds,
+                "s wall-clock budget for ", key, "=", value, " query")
+        break
+      }
+
       server <- overpass_servers[((attempt - 1) %% length(overpass_servers)) + 1]
 
-      tryCatch({
+      err_msg <- NULL
+      result <- tryCatch({
         osmdata::set_overpass_url(server)
         osm_query <- osmdata::opq(bbox = bbox, timeout = timeout)
         osm_query <- osmdata::add_osm_feature(osm_query, key = key, value = value)
-        result <- osmdata::osmdata_sf(osm_query)
-        osmdata::set_overpass_url(overpass_servers[1])
-        return(result)
+        osmdata::osmdata_sf(osm_query)
       }, error = function(e) {
-        msg <- conditionMessage(e)
-        if (attempt < max_attempts) {
-          if (grepl("500|502|503|504|timeout|Timeout", msg, ignore.case = TRUE)) {
-            wait_time <- attempt * 3
-            message("    Server error, trying another server in ", wait_time, "s...")
-            Sys.sleep(wait_time)
-          } else {
-            message("    Error: ", msg)
-          }
-        } else {
-          message("    Failed after ", max_attempts, " attempts: ", msg)
-        }
+        err_msg <<- conditionMessage(e)
         NULL
       })
+
+      if (!is.null(result)) {
+        osmdata::set_overpass_url(overpass_servers[1])
+        return(result)
+      }
+
+      if (is_fatal(err_msg)) {
+        message("    Overpass error (not retryable here): ", err_msg)
+        break
+      }
+
+      if (attempt < max_attempts) {
+        if (grepl("500|502|503|504|timeout|Timeout",
+                  err_msg, ignore.case = TRUE)) {
+          wait_time <- attempt * 3
+          message("    Server error, trying another server in ", wait_time, "s...")
+          Sys.sleep(wait_time)
+        } else {
+          message("    Error: ", err_msg)
+        }
+      } else {
+        message("    Failed after ", max_attempts, " attempts: ", err_msg)
+      }
     }
     tryCatch(osmdata::set_overpass_url(overpass_servers[1]), error = function(e) NULL)
     return(NULL)
@@ -533,11 +600,18 @@ download_lake_osm <- function(sites_df, timeout = 90) {
 
   # Check if we found ANY water bodies
   if (length(water_list) == 0) {
-    warning("No water bodies found in OpenStreetMap for the given site coordinates. ",
-            "This typically means the lakes are too small to be mapped in OSM ",
-            "(e.g., small prairie ponds). Sites without lake boundaries will ",
-            "receive NA fetch values. You can supply your own boundary file ",
-            "using: get_lake_boundary(sites, file = 'your_boundary.gpkg')")
+    warning("No water bodies were returned by OpenStreetMap for the given ",
+            "site coordinates. This can happen when: (a) the lake is too small ",
+            "to be mapped in OSM (e.g., small ponds); (b) all Overpass API ",
+            "queries failed (server rate-limiting, timeouts, or a parsing ",
+            "error inside the osmdata package). Sites without lake boundaries ",
+            "will receive NA fetch values.\n",
+            "Workarounds:\n",
+            "  - Try again later (Overpass server load varies).\n",
+            "  - Supply your own boundary file: ",
+            "get_lake_boundary(sites, file = 'your_boundary.gpkg')\n",
+            "  - Increase the timeout: get_lake_boundary(sites, timeout = 300)",
+            call. = FALSE)
 
     # Return empty lake set so downstream processing can assign NAs
     sites_utm_temp <- sf::st_transform(sites_sf, utm_epsg)

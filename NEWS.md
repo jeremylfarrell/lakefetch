@@ -1,3 +1,33 @@
+# lakefetch 0.1.9
+
+Follow-up after an issue opened by rOpenSci editor Pakillo during final
+review checks
+([lakefetch#2](https://github.com/jeremylfarrell/lakefetch/issues/2)).
+
+## Bug fixes
+
+* **Bound worst-case wait for `get_lake_boundary()`**: Previous versions
+  retried Overpass queries up to three times per query type and per
+  server, which compounded with osmdata's own 60-second rate-limit
+  backoff to produce 10-20+ minute waits when the server was throttling
+  us or when `osmdata::osmdata_sf()` hit a deterministic parse error.
+  Two changes cap this:
+  - Errors that are not usefully retryable ("arguments imply differing
+    number of rows" from osmdata, and HTTP 429 Too Many Requests from
+    Overpass) now short-circuit after the first attempt.
+  - Each query type also carries a 90-120 second wall-clock budget, so
+    even if a series of transient errors keeps returning, the total
+    time a single query type can spend is bounded.
+
+## Improvements
+
+* **Clearer failure message from `get_lake_boundary()`**: The warning
+  when no water bodies could be downloaded now distinguishes the
+  "small pond" case (real absence in OSM) from the "Overpass errored"
+  case (server load, timeouts, osmdata parsing), and includes concrete
+  workarounds (try again later, supply a local file, increase
+  `timeout`).
+
 # lakefetch 0.1.8
 
 ## Bug fixes

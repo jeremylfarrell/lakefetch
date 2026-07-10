@@ -331,7 +331,7 @@ test_that("download_lake_osm returns empty lakes when no water found", {
 
   expect_warning(
     result <- lakefetch:::download_lake_osm(sites),
-    "No water bodies found"
+    "No water bodies were returned by OpenStreetMap"
   )
 
   expect_equal(nrow(result$all_lakes), 0)

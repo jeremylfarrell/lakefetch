@@ -159,7 +159,7 @@ test_that("download_lake_osm warns and creates fallback when no water bodies fou
 
   expect_warning(
     result <- lakefetch:::download_lake_osm(sites),
-    "No water bodies found"
+    "No water bodies were returned by OpenStreetMap"
   )
 
   # Should return empty lake set with sites, not a fallback boundary
@@ -398,4 +398,62 @@ test_that("assign_sites_to_lakes emits warning when sites cannot be matched", {
     lakefetch::assign_sites_to_lakes(sites, far_lakes, tolerance_m = 50),
     "could not be assigned to any lake polygon"
   )
+})
+
+test_that("query_osm_by_name does not retry on 'differing rows' parse errors", {
+  # Regression for lakefetch#2 (Pakillo): the "arguments imply differing
+  # number of rows" error from osmdata::osmdata_sf() is deterministic, so
+  # retrying only wastes minutes on rate-limit backoff. Test that we call
+  # osmdata_sf at most once when it throws that error.
+  n_calls <- 0
+  local_mocked_bindings(
+    .package = "osmdata",
+    opq = function(bbox, ...) structure(list(bbox = bbox), class = "overpass_query"),
+    add_osm_feature = function(opq, ...) opq,
+    osmdata_sf = function(q) {
+      n_calls <<- n_calls + 1
+      stop("arguments imply differing number of rows: 1160, 0")
+    },
+    set_overpass_url = function(url) invisible(NULL)
+  )
+
+  bbox <- c(left = -74.5, bottom = 43, right = -74, top = 43.5)
+  res <- lakefetch:::query_osm_by_name(
+    bbox, names = "Blue Mountain Lake",
+    overpass_servers = c("https://example.invalid/api",
+                          "https://example2.invalid/api"),
+    max_attempts = 3
+  )
+
+  # Fatal parse error -> should short-circuit after exactly one attempt.
+  expect_null(res)
+  expect_equal(n_calls, 1)
+})
+
+test_that("query_osm_by_name does not retry on HTTP 429 rate-limit errors", {
+  # Regression for lakefetch#2 (Pakillo): a 429 from Overpass triggers
+  # osmdata's internal 60-second backoff. Retrying immediately just
+  # compounds that wait for no benefit. Test that we short-circuit.
+  n_calls <- 0
+  local_mocked_bindings(
+    .package = "osmdata",
+    opq = function(bbox, ...) structure(list(bbox = bbox), class = "overpass_query"),
+    add_osm_feature = function(opq, ...) opq,
+    osmdata_sf = function(q) {
+      n_calls <<- n_calls + 1
+      stop("HTTP 429 Too Many Requests.")
+    },
+    set_overpass_url = function(url) invisible(NULL)
+  )
+
+  bbox <- c(left = -74.5, bottom = 43, right = -74, top = 43.5)
+  res <- lakefetch:::query_osm_by_name(
+    bbox, names = "Blue Mountain Lake",
+    overpass_servers = c("https://example.invalid/api",
+                          "https://example2.invalid/api"),
+    max_attempts = 3
+  )
+
+  expect_null(res)
+  expect_equal(n_calls, 1)
 })
