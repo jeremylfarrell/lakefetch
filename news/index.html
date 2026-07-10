@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,23 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.9" id="lakefetch-019">lakefetch 0.1.9<a class="anchor" aria-label="anchor" href="#lakefetch-019"></a></h2>
+<p>Follow-up after an issue opened by rOpenSci editor Pakillo during final review checks (<a href="https://github.com/jeremylfarrell/lakefetch/issues/2" class="external-link">lakefetch#2</a>).</p>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-9">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-9"></a></h3>
+<ul><li>
+<strong>Bound worst-case wait for <code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code></strong>: Previous versions retried Overpass queries up to three times per query type and per server, which compounded with osmdata’s own 60-second rate-limit backoff to produce 10-20+ minute waits when the server was throttling us or when <code><a href="https://docs.ropensci.org/osmdata/reference/osmdata_sf.html" class="external-link">osmdata::osmdata_sf()</a></code> hit a deterministic parse error. Two changes cap this:
+<ul><li>Errors that are not usefully retryable (“arguments imply differing number of rows” from osmdata, and HTTP 429 Too Many Requests from Overpass) now short-circuit after the first attempt.</li>
+<li>Each query type also carries a 90-120 second wall-clock budget, so even if a series of transient errors keeps returning, the total time a single query type can spend is bounded.</li>
+</ul></li>
+</ul></div>
+<div class="section level3">
+<h3 id="improvements-0-1-9">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-1-9"></a></h3>
+<ul><li>
+<strong>Clearer failure message from <code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code></strong>: The warning when no water bodies could be downloaded now distinguishes the “small pond” case (real absence in OSM) from the “Overpass errored” case (server load, timeouts, osmdata parsing), and includes concrete workarounds (try again later, supply a local file, increase <code>timeout</code>).</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.8" id="lakefetch-018">lakefetch 0.1.8<a class="anchor" aria-label="anchor" href="#lakefetch-018"></a></h2>
 <div class="section level3">
@@ -234,7 +251,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
