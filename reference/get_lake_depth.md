@@ -85,5 +85,5 @@ depth <- get_lake_depth(example_lake, user_depth = 8.5)
 
 # Estimate from lake area
 depth <- get_lake_depth(example_lake)
-#>   Lake depth estimated from area (3.14 km2): mean ~ 13.7m, max ~ 34.3m
+#>   Lake depth estimated from area (5.06 km2): mean ~ 15.4m, max ~ 38.6m
 ```

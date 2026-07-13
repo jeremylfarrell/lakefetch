@@ -6,7 +6,13 @@ file.
 ## Usage
 
 ``` r
-get_lake_boundary(sites, file = NULL, timeout = 90, simplify_tolerance_m = 0)
+get_lake_boundary(
+  sites,
+  file = NULL,
+  timeout = 90,
+  simplify_tolerance_m = 0,
+  total_timeout_s = 300
+)
 ```
 
 ## Arguments
@@ -33,6 +39,16 @@ get_lake_boundary(sites, file = NULL, timeout = 90, simplify_tolerance_m = 0)
   where an exact coastline is not needed and a coarser polygon greatly
   speeds up fetch ray-casting. Typical values: 50-500 m for large lakes
   (e.g., Mälaren, Vättern). Default is 0 (no simplification).
+
+- total_timeout_s:
+
+  Numeric; hard cap in seconds on the wall-clock time
+  `get_lake_boundary()` will spend downloading from OSM before it aborts
+  and returns whatever partial results it has collected. This is
+  independent of the per-query `timeout`: a slow Overpass server or a
+  large multi-cluster query set can still take much longer than
+  `timeout` in aggregate. Default 300 (5 minutes), set to `Inf` to
+  disable.
 
 ## Value
 

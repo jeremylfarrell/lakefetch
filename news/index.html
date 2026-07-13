@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,24 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.10" id="lakefetch-0110">lakefetch 0.1.10<a class="anchor" aria-label="anchor" href="#lakefetch-0110"></a></h2>
+<p>Response to Pakillo’s final review comments on ropensci/software-review#762.</p>
+<div class="section level3">
+<h3 id="new-features-0-1-10">New features<a class="anchor" aria-label="anchor" href="#new-features-0-1-10"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/get_lake_boundary.html">get_lake_boundary()</a></code> <code>total_timeout_s</code> argument</strong>: a hard wall-clock cap (default 300 seconds / 5 minutes) on the total time the function will spend downloading from OSM before it aborts and returns whatever it has collected. Complements the existing per-query <code>timeout</code>, which bounds a single Overpass call but not the aggregate over multiple clusters or query types.</li>
+<li>
+<strong>Shiny <code><a href="../reference/fetch_app_upload.html">fetch_app_upload()</a></code> accepts a user-supplied lake boundary</strong>: a new file input in the upload panel lets users upload their own shapefile / GeoPackage / GeoJSON / KML instead of hitting OSM. This makes the app usable end-to-end when Overpass is unavailable or when the target lake is not well-mapped in OSM. Shapefiles can be uploaded as a multi-file selection (<code>.shp</code> + <code>.shx</code> + <code>.dbf</code> + <code>.prj</code>).</li>
+<li>
+<strong>GeoPackage export now includes fetch rays and lake polygons</strong>: the “Download GeoPackage” button in <code><a href="../reference/fetch_app_upload.html">fetch_app_upload()</a></code> writes three layers instead of one - <code>sites</code> (points with fetch attributes), <code>fetch_rays</code> (line geometries for each direction, from <code><a href="../reference/create_ray_geometries.html">create_ray_geometries()</a></code>), and <code>lakes</code> (boundary polygons).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="data-0-1-10">Data<a class="anchor" aria-label="anchor" href="#data-0-1-10"></a></h3>
+<ul><li>
+<strong><code>example_lake</code> is now the real Blue Mountain Lake polygon</strong> (Hamilton County, NY, ~5 km^2), downloaded once from OpenStreetMap and bundled as a <code>.rda</code>. Previously a synthetic 1 km-radius circle. The new polygon matches the location of <code>inst/extdata/sample_sites.csv</code>, so package examples and the pkgdown site can render fetch plots end-to-end without needing a live OSM connection.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.9" id="lakefetch-019">lakefetch 0.1.9<a class="anchor" aria-label="anchor" href="#lakefetch-019"></a></h2>
 <p>Follow-up after an issue opened by rOpenSci editor Pakillo during final review checks (<a href="https://github.com/jeremylfarrell/lakefetch/issues/2" class="external-link">lakefetch#2</a>).</p>

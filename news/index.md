@@ -1,5 +1,44 @@
 # Changelog
 
+## lakefetch 0.1.10
+
+Response to Pakillo’s final review comments on
+ropensci/software-review#762.
+
+### New features
+
+- **[`get_lake_boundary()`](https://jeremylfarrell.github.io/lakefetch/reference/get_lake_boundary.md)
+  `total_timeout_s` argument**: a hard wall-clock cap (default 300
+  seconds / 5 minutes) on the total time the function will spend
+  downloading from OSM before it aborts and returns whatever it has
+  collected. Complements the existing per-query `timeout`, which bounds
+  a single Overpass call but not the aggregate over multiple clusters or
+  query types.
+- **Shiny
+  [`fetch_app_upload()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app_upload.md)
+  accepts a user-supplied lake boundary**: a new file input in the
+  upload panel lets users upload their own shapefile / GeoPackage /
+  GeoJSON / KML instead of hitting OSM. This makes the app usable
+  end-to-end when Overpass is unavailable or when the target lake is not
+  well-mapped in OSM. Shapefiles can be uploaded as a multi-file
+  selection (`.shp` + `.shx` + `.dbf` + `.prj`).
+- **GeoPackage export now includes fetch rays and lake polygons**: the
+  “Download GeoPackage” button in
+  [`fetch_app_upload()`](https://jeremylfarrell.github.io/lakefetch/reference/fetch_app_upload.md)
+  writes three layers instead of one - `sites` (points with fetch
+  attributes), `fetch_rays` (line geometries for each direction, from
+  [`create_ray_geometries()`](https://jeremylfarrell.github.io/lakefetch/reference/create_ray_geometries.md)),
+  and `lakes` (boundary polygons).
+
+### Data
+
+- **`example_lake` is now the real Blue Mountain Lake polygon**
+  (Hamilton County, NY, ~5 km^2), downloaded once from OpenStreetMap and
+  bundled as a `.rda`. Previously a synthetic 1 km-radius circle. The
+  new polygon matches the location of `inst/extdata/sample_sites.csv`,
+  so package examples and the pkgdown site can render fetch plots
+  end-to-end without needing a live OSM connection.
+
 ## lakefetch 0.1.9
 
 Follow-up after an issue opened by rOpenSci editor Pakillo during final

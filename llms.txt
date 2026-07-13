@@ -384,7 +384,7 @@ Built-in example data
 - [`adirondack_sites`](https://jeremylfarrell.github.io/lakefetch/reference/adirondack_sites.md)
   : Adirondack Lake Sampling Sites
 - [`example_lake`](https://jeremylfarrell.github.io/lakefetch/reference/example_lake.md)
-  : Example Circular Lake Polygon
+  : Blue Mountain Lake Polygon (Example Lake)
 - [`wisconsin_lakes`](https://jeremylfarrell.github.io/lakefetch/reference/wisconsin_lakes.md)
   : Wisconsin Lake Sampling Sites
 

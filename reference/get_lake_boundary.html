@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.9</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.10</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +44,13 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_lake_boundary</span><span class="op">(</span><span class="va">sites</span>, file <span class="op">=</span> <span class="cn">NULL</span>, timeout <span class="op">=</span> <span class="fl">90</span>, simplify_tolerance_m <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_lake_boundary</span><span class="op">(</span></span>
+<span>  <span class="va">sites</span>,</span>
+<span>  file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  timeout <span class="op">=</span> <span class="fl">90</span>,</span>
+<span>  simplify_tolerance_m <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  total_timeout_s <span class="op">=</span> <span class="fl">300</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -72,6 +78,16 @@ polygons with <code>sf::st_simplify(dTolerance = simplify_tolerance_m)</code>
 complex lakes where an exact coastline is not needed and a coarser
 polygon greatly speeds up fetch ray-casting. Typical values: 50-500 m
 for large lakes (e.g., Mälaren, Vättern). Default is 0 (no simplification).</p></dd>
+
+
+<dt id="arg-total-timeout-s">total_timeout_s<a class="anchor" aria-label="anchor" href="#arg-total-timeout-s"></a></dt>
+<dd><p>Numeric; hard cap in seconds on the wall-clock time
+<code>get_lake_boundary()</code> will spend downloading from OSM before it
+aborts and returns whatever partial results it has collected. This is
+independent of the per-query <code>timeout</code>: a slow Overpass server or
+a large multi-cluster query set can still take much longer than
+<code>timeout</code> in aggregate. Default 300 (5 minutes), set to <code>Inf</code>
+to disable.</p></dd>
 
 </dl></div>
     <div class="section level2">
