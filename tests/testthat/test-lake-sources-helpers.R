@@ -573,6 +573,45 @@ test_that("get_lake_boundary timeout arg accepted (signature plumbed through)", 
   expect_equal(formals(lakefetch::get_lake_boundary)$simplify_tolerance_m, 0)
 })
 
+test_that("cluster_sites handles a single site", {
+  # Edge case: one row of input. cluster_sites should return one cluster
+  # containing index 1.
+  sites <- sf::st_sf(
+    Site = "S1",
+    geometry = sf::st_sfc(sf::st_point(c(-74, 43)), crs = 4326)
+  )
+  clusters <- lakefetch:::cluster_sites(sites)
+  expect_type(clusters, "list")
+  expect_length(clusters, 1)
+  expect_equal(clusters[[1]], 1L)
+})
+
+test_that("standardize_osm_sf returns NULL on empty input", {
+  expect_null(lakefetch:::standardize_osm_sf(NULL))
+
+  empty_sf <- sf::st_sf(
+    osm_id = character(0),
+    name = character(0),
+    geometry = sf::st_sfc(crs = 4326)
+  )
+  expect_null(lakefetch:::standardize_osm_sf(empty_sf))
+})
+
+test_that("standardize_osm_sf handles missing osm_id / name columns", {
+  # OSM sometimes returns polygons without an osm_id or name column.
+  # The function should fill NA_character_ rather than error.
+  ring <- matrix(c(0, 0, 1, 0, 1, 1, 0, 1, 0, 0), ncol = 2, byrow = TRUE)
+  poly <- sf::st_sf(
+    other_col = "foo",
+    geometry = sf::st_sfc(sf::st_polygon(list(ring)), crs = 4326)
+  )
+  result <- lakefetch:::standardize_osm_sf(poly)
+  expect_s3_class(result, "sf")
+  expect_equal(nrow(result), 1)
+  expect_true(is.na(result$osm_id))
+  expect_true(is.na(result$name))
+})
+
 test_that("query_osm_by_name expands narrow bbox for name-targeted queries", {
   # The name-query bbox expansion (added so single points in huge lakes can
   # retrieve the lake polygon) is implemented inside query_osm_by_name. We

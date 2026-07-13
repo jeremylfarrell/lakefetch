@@ -17,6 +17,13 @@
 #'   complex lakes where an exact coastline is not needed and a coarser
 #'   polygon greatly speeds up fetch ray-casting. Typical values: 50-500 m
 #'   for large lakes (e.g., Mälaren, Vättern). Default is 0 (no simplification).
+#' @param total_timeout_s Numeric; hard cap in seconds on the wall-clock time
+#'   \code{get_lake_boundary()} will spend downloading from OSM before it
+#'   aborts and returns whatever partial results it has collected. This is
+#'   independent of the per-query \code{timeout}: a slow Overpass server or
+#'   a large multi-cluster query set can still take much longer than
+#'   \code{timeout} in aggregate. Default 300 (5 minutes), set to \code{Inf}
+#'   to disable.
 #'
 #' @return A list with elements:
 #'   \item{all_lakes}{sf object with lake polygons in UTM projection}
@@ -48,11 +55,13 @@
 #'
 #' @export
 get_lake_boundary <- function(sites, file = NULL, timeout = 90,
-                              simplify_tolerance_m = 0) {
+                              simplify_tolerance_m = 0,
+                              total_timeout_s = 300) {
   result <- if (!is.null(file)) {
     load_lake_file(sites, file)
   } else {
-    download_lake_osm(sites, timeout = timeout)
+    download_lake_osm(sites, timeout = timeout,
+                       total_timeout_s = total_timeout_s)
   }
 
   if (isTRUE(simplify_tolerance_m > 0) &&
@@ -387,13 +396,26 @@ download_lake_osm_single <- function(bbox_vec, lake_names = NULL,
 #' @return A list with all_lakes, sites, and utm_epsg
 #'
 #' @noRd
-download_lake_osm <- function(sites_df, timeout = 90) {
+download_lake_osm <- function(sites_df, timeout = 90,
+                              total_timeout_s = 300) {
 
   message("Converting to spatial format...")
 
   # Disable S2 spherical geometry to avoid topology errors
   sf::sf_use_s2(FALSE)
   on.exit(sf::sf_use_s2(TRUE), add = TRUE)
+
+  # Global wall-clock budget across all query attempts / clusters. If the
+  # combined per-query budgets in query_osm_by_name / query_osm_robust plus
+  # any per-cluster loops exceed this, we abort and return whatever we've
+  # collected so far so the user is not stuck waiting minutes with no
+  # feedback.
+  overall_start <- Sys.time()
+  budget_exceeded <- function() {
+    is.finite(total_timeout_s) &&
+      as.numeric(difftime(Sys.time(), overall_start, units = "secs")) >
+      total_timeout_s
+  }
 
   # Convert to sf object (WGS84). For data.frame input, detect lat/lon
   # columns flexibly (case-insensitive, accepts "lat"/"latitude", "lon"/"long"
@@ -513,6 +535,12 @@ download_lake_osm <- function(sites_df, timeout = 90) {
     failed_clusters <- integer(0)
 
     for (ci in seq_along(clusters)) {
+      if (budget_exceeded()) {
+        message("  Aborting cluster loop: exceeded ", total_timeout_s,
+                "s total_timeout_s budget (", ci - 1, "/",
+                n_clusters, " clusters processed)")
+        break
+      }
       cluster_idx <- clusters[[ci]]
       cluster_sf <- sites_sf[cluster_idx, ]
 

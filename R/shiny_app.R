@@ -772,6 +772,17 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
                           "use the lakefetch R package locally:",
                           shiny::code("install.packages('lakefetch')")),
           shiny::helpText("Optional: include a 'datetime' column for weather analysis"),
+          shiny::tags$hr(style = "margin: 10px 0;"),
+          shiny::fileInput("lake_upload",
+                           "Optional: lake boundary file",
+                           accept = c(".gpkg", ".shp", ".geojson", ".kml",
+                                      "application/octet-stream",
+                                      "application/geopackage+sqlite3",
+                                      "application/json"),
+                           multiple = TRUE),
+          shiny::helpText("Skip the OSM download by supplying your own lake",
+                          "boundary polygon. For shapefiles, upload all of",
+                          ".shp, .shx, .dbf, .prj (multi-select)."),
           shiny::hr(),
           shiny::h5("Options"),
           shiny::numericInput("water_depth", "Water depth (m)", value = 5, min = 0.5, max = 100),
@@ -982,9 +993,32 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
             exposure_relative_exposed = input$rel_exposed
           )
 
-          # Step 1: Get lake boundaries
-          shiny::incProgress(0.15, detail = "Downloading lake boundaries from OSM...")
-          rv$lake_data <- get_lake_boundary(rv$sites)
+          # Step 1: Get lake boundaries. If the user uploaded a boundary
+          # file, use it directly and skip the OSM query. Shapefiles come as
+          # multiple files (.shp/.shx/.dbf/.prj); we move them into a single
+          # temp directory and hand the .shp path to get_lake_boundary().
+          if (!is.null(input$lake_upload) && nrow(input$lake_upload) > 0) {
+            shiny::incProgress(0.15,
+                                detail = "Loading uploaded lake boundary...")
+            uploads <- input$lake_upload
+            main_path <- if (nrow(uploads) == 1) {
+              uploads$datapath[1]
+            } else {
+              tmp_dir <- tempfile("lake_boundary_"); dir.create(tmp_dir)
+              for (i in seq_len(nrow(uploads))) {
+                file.copy(uploads$datapath[i],
+                          file.path(tmp_dir, uploads$name[i]))
+              }
+              shp <- list.files(tmp_dir, pattern = "\\.shp$",
+                                 full.names = TRUE)[1]
+              if (is.na(shp)) uploads$datapath[1] else shp
+            }
+            rv$lake_data <- get_lake_boundary(rv$sites, file = main_path)
+          } else {
+            shiny::incProgress(0.15,
+                                detail = "Downloading lake boundaries from OSM...")
+            rv$lake_data <- get_lake_boundary(rv$sites)
+          }
 
           # Step 2: Calculate fetch
           shiny::incProgress(0.25, detail = "Calculating fetch...")
@@ -1534,7 +1568,10 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
       }
     )
 
-    # Download GeoPackage
+    # Download GeoPackage. A GeoPackage can hold multiple layers, so we write
+    # THREE: the sites (with fetch attributes), the directional fetch rays
+    # (one row per direction per site, with distance in meters), and the lake
+    # polygons. Users typically want all three for downstream GIS work.
     output$download_gpkg <- shiny::downloadHandler(
       filename = function() {
         paste0("fetch_results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".gpkg")
@@ -1543,7 +1580,29 @@ fetch_app_upload <- function(title = "Lake Fetch Calculator") {
         req(rv$fetch_data)
         results_wgs <- sf::st_transform(rv$fetch_data$results, 4326)
         results_wgs$rose_plot <- NULL
-        sf::st_write(results_wgs, file, driver = "GPKG", delete_dsn = TRUE)
+
+        # Layer 1: sites with fetch attributes
+        sf::st_write(results_wgs, file, layer = "sites",
+                     driver = "GPKG", delete_dsn = TRUE, quiet = TRUE)
+
+        # Layer 2: directional fetch rays (one line per site per direction)
+        rays <- tryCatch(
+          create_ray_geometries(rv$fetch_data),
+          error = function(e) NULL
+        )
+        if (!is.null(rays) && nrow(rays) > 0) {
+          rays_wgs <- sf::st_transform(rays, 4326)
+          sf::st_write(rays_wgs, file, layer = "fetch_rays",
+                       driver = "GPKG", append = TRUE, quiet = TRUE)
+        }
+
+        # Layer 3: lake boundary polygons
+        lakes <- rv$fetch_data$lakes
+        if (!is.null(lakes) && nrow(lakes) > 0) {
+          lakes_wgs <- sf::st_transform(lakes, 4326)
+          sf::st_write(lakes_wgs, file, layer = "lakes",
+                       driver = "GPKG", append = TRUE, quiet = TRUE)
+        }
       }
     )
 

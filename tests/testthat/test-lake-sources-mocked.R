@@ -457,3 +457,70 @@ test_that("query_osm_by_name does not retry on HTTP 429 rate-limit errors", {
   expect_null(res)
   expect_equal(n_calls, 1)
 })
+
+# --- v0.1.10 regression tests -----------------------------------------------
+
+test_that("get_lake_boundary passes total_timeout_s to download_lake_osm", {
+  # total_timeout_s is the new v0.1.10 wall-clock cap. Verify it's plumbed
+  # from the exported function down into the internal helper.
+  args_seen <- NULL
+  local_mocked_bindings(
+    download_lake_osm = function(sites_df, timeout = 90,
+                                  total_timeout_s = 300) {
+      args_seen <<- list(timeout = timeout,
+                          total_timeout_s = total_timeout_s)
+      list(all_lakes = sf::st_sf(osm_id = character(0),
+                                  geometry = sf::st_sfc(crs = 32618)),
+           sites = sites_df, utm_epsg = 32618)
+    },
+    .package = "lakefetch"
+  )
+
+  sites <- data.frame(Site = "S1", latitude = 43, longitude = -74)
+  lakefetch::get_lake_boundary(sites, timeout = 45, total_timeout_s = 60)
+
+  expect_equal(args_seen$timeout, 45)
+  expect_equal(args_seen$total_timeout_s, 60)
+})
+
+test_that("download_lake_osm aborts cluster loop when total_timeout_s exceeded", {
+  # Force the cluster path by making sites span > 0.5 degrees, then use a
+  # tiny total_timeout_s (0.5s) that will always be exceeded before the
+  # first cluster completes. Every mocked query returns something so we
+  # measure how many clusters got processed - should be 0 or 1 given the
+  # extreme budget.
+  sites <- data.frame(
+    Site = c("A", "B", "C"),
+    latitude = c(43, 43.5, 44),
+    longitude = c(-90, -89, -88),
+    stringsAsFactors = FALSE
+  )
+
+  n_queries <- 0
+  slow_osm <- function(q) {
+    n_queries <<- n_queries + 1
+    Sys.sleep(1)  # Each query takes 1 second
+    list(osm_polygons = NULL, osm_multipolygons = NULL)
+  }
+
+  local_mocked_bindings(
+    .package = "osmdata",
+    opq = function(bbox, ...) structure(list(bbox = bbox),
+                                         class = "overpass_query"),
+    add_osm_feature = function(opq, ...) opq,
+    osmdata_sf = slow_osm,
+    set_overpass_url = function(url) invisible(NULL)
+  )
+
+  suppressWarnings(
+    result <- lakefetch:::download_lake_osm(sites, timeout = 5,
+                                             total_timeout_s = 0.5)
+  )
+
+  # With 3 clusters at 1s each and a 0.5s budget, we should have aborted
+  # early rather than run all 3 queries.
+  expect_lt(n_queries, 3)
+  # But the function should still return a valid (possibly empty) result
+  expect_type(result, "list")
+  expect_true("all_lakes" %in% names(result))
+})

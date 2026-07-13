@@ -63,29 +63,45 @@ cat("Created adirondack_sites:", nrow(adirondack_sites), "sites across",
 # ==============================================================================
 # Dataset 2: example_lake
 # ==============================================================================
-# A simple circular lake polygon for demonstration and testing.
-# This synthetic lake has known geometry for validation.
+# The real OpenStreetMap polygon for Blue Mountain Lake (Hamilton County,
+# NY). Bundling this lets @examples and the pkgdown site render plots
+# without needing an internet connection to Overpass, and matches the
+# location of inst/extdata/sample_sites.csv so the two can be used together.
 
-center_x <- 500000
-center_y <- 4800000
-radius <- 1000  # 1 km radius
-n_points <- 360
+message("Fetching Blue Mountain Lake polygon from OpenStreetMap...")
+library(osmdata)
 
-angles <- seq(0, 2 * pi, length.out = n_points + 1)
-x <- center_x + radius * cos(angles)
-y <- center_y + radius * sin(angles)
+bml_bbox <- c(left = -74.47, bottom = 43.855,
+              right = -74.42, top = 43.885)
+bml_osm <- opq(bbox = bml_bbox, timeout = 120) |>
+  add_osm_feature(key = "name", value = "Blue Mountain Lake",
+                   value_exact = FALSE) |>
+  osmdata_sf()
 
-coords <- cbind(x, y)
-poly <- st_polygon(list(coords))
+# The lake is stored as an OSM relation, so it appears in osm_multipolygons.
+if (is.null(bml_osm$osm_multipolygons) ||
+    nrow(bml_osm$osm_multipolygons) == 0) {
+  stop("Could not fetch Blue Mountain Lake polygon from OSM. ",
+       "Retry when Overpass is responsive.")
+}
 
-example_lake <- st_sf(
-  osm_id = "example_001",
-  name = "Example Circular Lake",
-  area_km2 = pi * (radius/1000)^2,
-  geometry = st_sfc(poly, crs = 32618)  # UTM 18N
+# Take the largest matching multipolygon in case OSM returns duplicates.
+bml_wgs <- bml_osm$osm_multipolygons
+bml_wgs <- bml_wgs[which.max(as.numeric(sf::st_area(bml_wgs))), ]
+
+# Store in UTM 18N (matches sample_sites.csv location).
+bml_utm <- sf::st_transform(bml_wgs, 32618)
+bml_utm <- sf::st_make_valid(bml_utm)
+
+example_lake <- sf::st_sf(
+  osm_id = as.character(bml_utm$osm_id[[1]]),
+  name = "Blue Mountain Lake",
+  area_km2 = as.numeric(sf::st_area(bml_utm)) / 1e6,
+  geometry = sf::st_geometry(bml_utm)
 )
 
-cat("Created example_lake: circular lake with radius", radius, "m\n")
+cat("Created example_lake: Blue Mountain Lake,",
+    round(example_lake$area_km2, 2), "km^2\n")
 
 # ==============================================================================
 # Dataset 3: wisconsin_lakes
