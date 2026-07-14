@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.10</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.11</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -81,13 +81,19 @@ for large lakes (e.g., Mälaren, Vättern). Default is 0 (no simplification).</p
 
 
 <dt id="arg-total-timeout-s">total_timeout_s<a class="anchor" aria-label="anchor" href="#arg-total-timeout-s"></a></dt>
-<dd><p>Numeric; hard cap in seconds on the wall-clock time
-<code>get_lake_boundary()</code> will spend downloading from OSM before it
-aborts and returns whatever partial results it has collected. This is
-independent of the per-query <code>timeout</code>: a slow Overpass server or
-a large multi-cluster query set can still take much longer than
-<code>timeout</code> in aggregate. Default 300 (5 minutes), set to <code>Inf</code>
-to disable.</p></dd>
+<dd><p>Numeric; soft wall-clock budget in seconds on the
+total time <code>get_lake_boundary()</code> will spend downloading from OSM.
+The budget is consulted at natural breakpoints (between Overpass query
+types, between clusters for spread-out sites, and between name-filtered
+queries) and aborts further work when exceeded. It is NOT a hard cap
+on a single <code><a href="https://docs.ropensci.org/osmdata/reference/osmdata_sf.html" class="external-link">osmdata::osmdata_sf()</a></code> call: if Overpass returns
+HTTP 429, osmdata does its own 60-second-per-retry backoff loop
+internally and we cannot safely interrupt that from R without risking
+a segfault on Windows. So on a heavily throttled server a single call
+may still exceed <code>total_timeout_s</code> by several minutes. For a hard
+ceiling, wrap the call in <code><a href="https://henrikbengtsson.github.io/R.utils/reference/withTimeout.html" class="external-link">R.utils::withTimeout()</a></code> yourself, or
+supply a local boundary file via the <code>file</code> argument. Default
+300 seconds (5 minutes); set to <code>Inf</code> to disable.</p></dd>
 
 </dl></div>
     <div class="section level2">

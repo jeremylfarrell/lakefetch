@@ -42,13 +42,22 @@ get_lake_boundary(
 
 - total_timeout_s:
 
-  Numeric; hard cap in seconds on the wall-clock time
-  `get_lake_boundary()` will spend downloading from OSM before it aborts
-  and returns whatever partial results it has collected. This is
-  independent of the per-query `timeout`: a slow Overpass server or a
-  large multi-cluster query set can still take much longer than
-  `timeout` in aggregate. Default 300 (5 minutes), set to `Inf` to
-  disable.
+  Numeric; soft wall-clock budget in seconds on the total time
+  `get_lake_boundary()` will spend downloading from OSM. The budget is
+  consulted at natural breakpoints (between Overpass query types,
+  between clusters for spread-out sites, and between name-filtered
+  queries) and aborts further work when exceeded. It is NOT a hard cap
+  on a single
+  [`osmdata::osmdata_sf()`](https://docs.ropensci.org/osmdata/reference/osmdata_sf.html)
+  call: if Overpass returns HTTP 429, osmdata does its own
+  60-second-per-retry backoff loop internally and we cannot safely
+  interrupt that from R without risking a segfault on Windows. So on a
+  heavily throttled server a single call may still exceed
+  `total_timeout_s` by several minutes. For a hard ceiling, wrap the
+  call in
+  [`R.utils::withTimeout()`](https://henrikbengtsson.github.io/R.utils/reference/withTimeout.html)
+  yourself, or supply a local boundary file via the `file` argument.
+  Default 300 seconds (5 minutes); set to `Inf` to disable.
 
 ## Value
 
