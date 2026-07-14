@@ -1,3 +1,40 @@
+# lakefetch 0.1.11
+
+Follow-up to Pakillo's v0.1.10 re-test on ropensci/software-review#762.
+
+## Bug fixes
+
+* **`total_timeout_s` checked at more breakpoints**: The v0.1.10
+  implementation only enforced the budget in the cluster loop. On the
+  single-bbox path (small site spread), the budget was never checked and
+  the function could exceed `total_timeout_s` by 20+ minutes on a
+  throttled Overpass. It is now consulted between successive Overpass
+  query types (name-filtered, natural=water, water=lake) and between
+  name queries. A short (e.g., 5-second) budget will now abort well
+  before all three broad queries complete.
+  Important caveat: the budget is still soft. A single
+  `osmdata::osmdata_sf()` call can itself take many minutes because
+  osmdata does its own 60-second-per-retry backoff in response to
+  HTTP 429. R interrupts inside that backoff (e.g., `setTimeLimit()`)
+  can segfault when they fire during a curl call on Windows, so we do
+  not use them. For a hard ceiling, wrap in `R.utils::withTimeout()`
+  yourself or supply a local boundary file via the `file` argument.
+* **`plot_fetch_rose()` "Max: X km" label was clipped**: the label was
+  written into the plot region at y = -1.4 (below the ylim of
+  c(-1.3, 1.3)) with only one line of bottom margin, so the text was
+  frequently clipped. It is now placed with `mtext(side = 1)` and
+  bottom margin is increased to 2.5 lines, so the label always renders
+  in the safe margin area regardless of device size.
+
+## Documentation
+
+* **`plot_fetch_map()` and `plot_fetch_rose()` examples now render on
+  the pkgdown site**. The examples were rewritten to use the bundled
+  `example_lake` (Blue Mountain Lake) and the matching
+  `inst/extdata/sample_sites.csv`, computing fetch offline. This lets
+  the package website show actual plot output rather than only the
+  function signature.
+
 # lakefetch 0.1.10
 
 Response to Pakillo's final review comments on ropensci/software-review#762.

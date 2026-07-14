@@ -11,11 +11,22 @@
 #'
 #' @return A ggplot2 object
 #'
-#' @examplesIf interactive()
-#' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
-#' sites <- load_sites(csv_path)
-#' lake <- get_lake_boundary(sites)
-#' results <- fetch_calculate(sites, lake)
+#' @examples
+#' # Use the bundled example lake (Blue Mountain Lake, NY) and the
+#' # matching sample sites to compute and plot fetch offline.
+#' data(example_lake)
+#' sites_df <- load_sites(system.file("extdata", "sample_sites.csv",
+#'                                     package = "lakefetch"))
+#' sites_sf <- sf::st_transform(
+#'   sf::st_as_sf(sites_df,
+#'                coords = c("longitude", "latitude"), crs = 4326,
+#'                remove = FALSE),
+#'   sf::st_crs(example_lake)
+#' )
+#' lake_data <- list(all_lakes = example_lake,
+#'                   sites = sites_sf,
+#'                   utm_epsg = sf::st_crs(example_lake)$epsg)
+#' results <- fetch_calculate(sites_df, lake_data, add_context = FALSE)
 #' plot_fetch_map(results)
 #'
 #' @export
@@ -119,12 +130,22 @@ plot_fetch_bars <- function(fetch_data, title = "Effective Fetch by Site") {
 #'
 #' @return Invisible NULL (creates base R plot)
 #'
-#' @examplesIf interactive()
-#' csv_path <- system.file("extdata", "sample_sites.csv", package = "lakefetch")
-#' sites <- load_sites(csv_path)
-#' lake <- get_lake_boundary(sites)
-#' results <- fetch_calculate(sites, lake)
-#' plot_fetch_rose(results, results$results$Site[1])
+#' @examples
+#' # Compute fetch offline against the bundled Blue Mountain Lake polygon.
+#' data(example_lake)
+#' sites_df <- load_sites(system.file("extdata", "sample_sites.csv",
+#'                                     package = "lakefetch"))
+#' sites_sf <- sf::st_transform(
+#'   sf::st_as_sf(sites_df,
+#'                coords = c("longitude", "latitude"), crs = 4326,
+#'                remove = FALSE),
+#'   sf::st_crs(example_lake)
+#' )
+#' lake_data <- list(all_lakes = example_lake,
+#'                   sites = sites_sf,
+#'                   utm_epsg = sf::st_crs(example_lake)$epsg)
+#' results <- fetch_calculate(sites_df, lake_data, add_context = FALSE)
+#' plot_fetch_rose(results, 1)
 #'
 #' @export
 plot_fetch_rose <- function(fetch_data, site, title = NULL) {
@@ -190,8 +211,9 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
   angles <- as.numeric(gsub("fetch_", "", fetch_cols))
   fetch_vals <- as.numeric(sf::st_drop_geometry(site_row)[, fetch_cols])
 
-  # Set up plot
-  graphics::par(mar = c(1, 1, 2, 1))
+  # Set up plot. Bottom margin is 2.5 lines to leave room for the
+  # "Max: X km" annotation below the compass, which was clipped in v0.1.10.
+  graphics::par(mar = c(2.5, 1, 2, 1))
 
   # Convert to radians (0 = North, clockwise)
   angles_rad <- (90 - angles) * pi / 180
@@ -232,9 +254,10 @@ plot_fetch_rose <- function(fetch_data, site, title = NULL) {
   graphics::text(0, -1.15, "S", cex = 0.8, font = 2)
   graphics::text(-1.15, 0, "W", cex = 0.8, font = 2)
 
-  # Add scale label
-  graphics::text(0, -1.4, paste("Max:", round(max_fetch/1000, 1), "km"),
-       cex = 0.7, col = "gray40")
+  # Add scale label in the bottom margin (using mtext) so it cannot be
+  # clipped by the plot region.
+  graphics::mtext(paste("Max:", round(max_fetch / 1000, 1), "km"),
+                  side = 1, line = 0.5, cex = 0.7, col = "gray40")
 
   invisible(NULL)
 }
