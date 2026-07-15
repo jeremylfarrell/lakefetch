@@ -102,48 +102,6 @@ get_lake_boundary <- function(sites, file = NULL, timeout = 90,
 #' Groups sites by proximity using a grid-based approach. Sites within 0.1
 #' degrees (~11 km) of each other are placed in the same cluster.
 #'
-#' Build an empty lake-boundary result for early-abort paths
-#'
-#' Used when get_lake_boundary() short-circuits (e.g., because the
-#' total_timeout_s wall-clock cap has been reached) so downstream code can
-#' still treat the return value as a normal result and assign NA fetch to
-#' every site.
-#'
-#' @param sites A data.frame with latitude / longitude columns, or an sf.
-#' @return A list with the same shape as download_lake_osm()'s empty branch.
-#' @noRd
-make_empty_osm_result <- function(sites) {
-  if (inherits(sites, "sf")) {
-    sites_sf <- sf::st_transform(sites, 4326)
-  } else {
-    col_lower <- tolower(names(sites))
-    lat_idx <- which(col_lower %in% c("latitude", "lat", "y"))[1]
-    if (is.na(lat_idx)) lat_idx <- grep("^lat", col_lower)[1]
-    lon_idx <- which(col_lower %in% c("longitude", "lon", "long", "lng", "x"))[1]
-    if (is.na(lon_idx)) lon_idx <- grep("^lon", col_lower)[1]
-    sites_sf <- sf::st_as_sf(sites,
-                              coords = c(names(sites)[lon_idx],
-                                          names(sites)[lat_idx]),
-                              crs = 4326)
-  }
-  centroid_ll <- suppressWarnings(
-    sf::st_coordinates(sf::st_centroid(sf::st_union(sites_sf)))
-  )
-  utm_zone <- floor((centroid_ll[1] + 180) / 6) + 1
-  utm_epsg <- ifelse(centroid_ll[2] >= 0,
-                     as.numeric(paste0("326", sprintf("%02d", utm_zone))),
-                     as.numeric(paste0("327", sprintf("%02d", utm_zone))))
-  empty_lakes <- sf::st_sf(
-    osm_id = character(0),
-    name = character(0),
-    area_km2 = numeric(0),
-    geometry = sf::st_sfc(crs = utm_epsg)
-  )
-  list(all_lakes = empty_lakes,
-       sites = sf::st_transform(sites_sf, utm_epsg),
-       utm_epsg = utm_epsg)
-}
-
 #' @param sites_sf sf object with site points in WGS84
 #' @return List of integer vectors, each containing row indices for one cluster
 #' @noRd

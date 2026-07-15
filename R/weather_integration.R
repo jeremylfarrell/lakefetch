@@ -473,21 +473,3 @@ add_weather_context <- function(fetch_results, datetime_col = "datetime",
 }
 
 
-#' Get Direction Name from Degrees
-#'
-#' Converts wind direction in degrees to cardinal/intercardinal name.
-#'
-#' @param degrees Wind direction in degrees (0-360)
-#'
-#' @return Character string (e.g., "N", "NE", "E", etc.)
-#'
-#' @noRd
-direction_name <- function(degrees) {
-  if (is.na(degrees)) return(NA_character_)
-
-  dirs <- c("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
-
-  idx <- round(degrees / 22.5) %% 16 + 1
-  return(dirs[idx])
-}

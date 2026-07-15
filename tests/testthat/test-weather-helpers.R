@@ -2,38 +2,6 @@
 # Tests for weather_integration.R helper functions
 # ==============================================================================
 
-# --- direction_name ---
-
-test_that("direction_name converts degrees to cardinal directions", {
-  expect_equal(lakefetch:::direction_name(0), "N")
-  expect_equal(lakefetch:::direction_name(360), "N")
-  expect_equal(lakefetch:::direction_name(90), "E")
-  expect_equal(lakefetch:::direction_name(180), "S")
-  expect_equal(lakefetch:::direction_name(270), "W")
-})
-
-test_that("direction_name handles intercardinal directions", {
-  expect_equal(lakefetch:::direction_name(45), "NE")
-  expect_equal(lakefetch:::direction_name(135), "SE")
-  expect_equal(lakefetch:::direction_name(225), "SW")
-  expect_equal(lakefetch:::direction_name(315), "NW")
-})
-
-test_that("direction_name handles 16-point compass", {
-  expect_equal(lakefetch:::direction_name(22.5), "NNE")
-  expect_equal(lakefetch:::direction_name(67.5), "ENE")
-  expect_equal(lakefetch:::direction_name(112.5), "ESE")
-  expect_equal(lakefetch:::direction_name(157.5), "SSE")
-  expect_equal(lakefetch:::direction_name(202.5), "SSW")
-  expect_equal(lakefetch:::direction_name(247.5), "WSW")
-  expect_equal(lakefetch:::direction_name(292.5), "WNW")
-  expect_equal(lakefetch:::direction_name(337.5), "NNW")
-})
-
-test_that("direction_name returns NA for NA input", {
-  expect_true(is.na(lakefetch:::direction_name(NA)))
-})
-
 # --- circular_mean_direction ---
 
 test_that("circular_mean_direction calculates unweighted mean", {
