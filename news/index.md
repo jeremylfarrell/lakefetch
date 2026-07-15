@@ -1,5 +1,20 @@
 # Changelog
 
+## lakefetch 0.1.12
+
+### Internal
+
+- Removed three internal helpers that were defined (and unit-tested) but
+  never called from any production code path, per Pakillo’s review
+  comment on ropensci/software-review#762: `estimate_site_depth()`
+  (bathymetry.R), `direction_name()` (weather_integration.R), and
+  `make_empty_osm_result()` (lake_sources.R, added in v0.1.11 as
+  scaffolding for a
+  [`setTimeLimit()`](https://rdrr.io/r/base/setTimeLimit.html)-based
+  abort path that was reverted in the same version). The corresponding
+  tests in `test-bathymetry.R` and `test-weather-helpers.R` were removed
+  too.
+
 ## lakefetch 0.1.11
 
 Follow-up to Pakillo’s v0.1.10 re-test on ropensci/software-review#762.

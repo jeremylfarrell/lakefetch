@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">lakefetch</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.11</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.12</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,13 @@
       <small>Source: <a href="https://github.com/jeremylfarrell/lakefetch/blob/ropensci-software-review/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.12" id="lakefetch-0112">lakefetch 0.1.12<a class="anchor" aria-label="anchor" href="#lakefetch-0112"></a></h2>
+<div class="section level3">
+<h3 id="internal-0-1-12">Internal<a class="anchor" aria-label="anchor" href="#internal-0-1-12"></a></h3>
+<ul><li>Removed three internal helpers that were defined (and unit-tested) but never called from any production code path, per Pakillo’s review comment on ropensci/software-review#762: <code>estimate_site_depth()</code> (bathymetry.R), <code>direction_name()</code> (weather_integration.R), and <code>make_empty_osm_result()</code> (lake_sources.R, added in v0.1.11 as scaffolding for a <code><a href="https://rdrr.io/r/base/setTimeLimit.html" class="external-link">setTimeLimit()</a></code>-based abort path that was reverted in the same version). The corresponding tests in <code>test-bathymetry.R</code> and <code>test-weather-helpers.R</code> were removed too.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.11" id="lakefetch-0111">lakefetch 0.1.11<a class="anchor" aria-label="anchor" href="#lakefetch-0111"></a></h2>
 <p>Follow-up to Pakillo’s v0.1.10 re-test on ropensci/software-review#762.</p>
