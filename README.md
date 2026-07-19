@@ -1,7 +1,3 @@
-# lakefetch
-
-<img src="man/figures/logo.png" alt="lakefetch" width="400"/>
-
 <!-- badges: start -->
 [![Status at rOpenSci Software Peer Review](https://badges.ropensci.org/762_status.svg)](https://github.com/ropensci/software-review/issues/762)
 [![R-CMD-check](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml)
