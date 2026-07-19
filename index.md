@@ -1,7 +1,3 @@
-# lakefetch
-
-![lakefetch](reference/figures/logo.png)
-
 Calculate fetch (open water distance) and wave exposure metrics for
 freshwater lake sampling sites.
 
