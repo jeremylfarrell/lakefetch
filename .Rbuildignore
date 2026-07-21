@@ -29,5 +29,7 @@
 ^shinyapps$
 ^rsconnect$
 ^ropensci-submission-draft\.md$
+^ropensci-response-draft\.md$
+^ropensci-ci-website-fix-comment\.md$
 ^\.claude$
 ^Rplots\.pdf$

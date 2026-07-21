@@ -2,11 +2,10 @@
 
 <!-- badges: start -->
 [![Status at rOpenSci Software Peer Review](https://badges.ropensci.org/762_status.svg)](https://github.com/ropensci/software-review/issues/762)
-[![R-CMD-check](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/ropensci/lakefetch/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ropensci/lakefetch/actions/workflows/R-CMD-check.yaml)
 [![CRAN status](https://www.r-pkg.org/badges/version/lakefetch)](https://CRAN.R-project.org/package=lakefetch)
 [![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![codecov](https://codecov.io/gh/jeremylfarrell/lakefetch/branch/main/graph/badge.svg)](https://app.codecov.io/gh/jeremylfarrell/lakefetch)
-[![pkgdown](https://github.com/jeremylfarrell/lakefetch/actions/workflows/pkgdown.yaml/badge.svg)](https://jeremylfarrell.github.io/lakefetch/)
+[![codecov](https://codecov.io/gh/ropensci/lakefetch/branch/main/graph/badge.svg)](https://app.codecov.io/gh/ropensci/lakefetch)
 <!-- badges: end -->
 
 Calculate fetch (open water distance) and wave exposure metrics for freshwater lake sampling sites.
@@ -35,7 +34,7 @@ Or install the development version from GitHub:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("jeremylfarrell/lakefetch")
+remotes::install_github("ropensci/lakefetch")
 ```
 
 ## Quick Start
@@ -172,7 +171,7 @@ The package includes three built-in datasets:
 
 If you use lakefetch in your research, please cite:
 
-Farrell J (2026). *lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points*. R package version 0.1.3, <https://github.com/jeremylfarrell/lakefetch>.
+Farrell J (2026). *lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points*. R package version 0.1.3, <https://github.com/ropensci/lakefetch>.
 
 Or in BibTeX format:
 
@@ -182,7 +181,7 @@ Or in BibTeX format:
   author = {Jeremy Lynch Farrell},
   year = {2026},
   note = {R package version 0.1.3},
-  url = {https://github.com/jeremylfarrell/lakefetch},
+  url = {https://github.com/ropensci/lakefetch},
 }
 ```
 
@@ -198,11 +197,11 @@ This package was developed collaboratively with [Claude](https://claude.ai) (Ant
 
 ## Contributing
 
-Contributions are welcome. Please see [CONTRIBUTING.md](https://github.com/jeremylfarrell/lakefetch/blob/main/CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
+Contributions are welcome. Please see [CONTRIBUTING.md](https://github.com/ropensci/lakefetch/blob/main/CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
 
 ## Code of Conduct
 
-Please note that the lakefetch project is released with a [Contributor Code of Conduct](https://github.com/jeremylfarrell/lakefetch/blob/main/CODE_OF_CONDUCT.md). By contributing to this project, you agree to abide by its terms.
+Please note that the lakefetch project is released with a [Contributor Code of Conduct](https://ropensci.org/code-of-conduct/). By contributing to this project, you agree to abide by its terms.
 
 ## License
 

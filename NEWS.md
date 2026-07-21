@@ -1,3 +1,23 @@
+# lakefetch 0.1.13
+
+rOpenSci review [ropensci/software-review#762](https://github.com/ropensci/software-review/issues/762)
+was approved on 2026-07-20. This release covers the post-approval
+housekeeping steps from the reviewer bot's checklist.
+
+## Internal
+
+* Repository transferred from `jeremylfarrell/lakefetch` to
+  `ropensci/lakefetch`. All GitHub links (README, DESCRIPTION, man pages,
+  `codemeta.json`, `_pkgdown.yml`, CONTRIBUTING.md, `inst/CITATION`)
+  updated to point at the new location, and the local git remote was
+  repointed.
+* Package documentation site moved from a self-deployed pkgdown site to
+  rOpenSci's central docs build at <https://docs.ropensci.org/lakefetch>.
+  The standalone `pkgdown` GitHub Actions deploy workflow was removed
+  (`.github/workflows/pkgdown.yaml`) along with its README badge.
+* Removed the local `CODE_OF_CONDUCT.md`; rOpenSci's default Code of
+  Conduct now applies (linked from README).
+
 # lakefetch 0.1.12
 
 ## Internal
@@ -85,7 +105,7 @@ Response to Pakillo's final review comments on ropensci/software-review#762.
 
 Follow-up after an issue opened by rOpenSci editor Pakillo during final
 review checks
-([lakefetch#2](https://github.com/jeremylfarrell/lakefetch/issues/2)).
+([lakefetch#2](https://github.com/ropensci/lakefetch/issues/2)).
 
 ## Bug fixes
 

@@ -4,8 +4,8 @@
   "identifier": "lakefetch",
   "description": "Calculates fetch (open water distance) and wave exposure metrics for lake sampling points. Downloads lake boundaries from 'OpenStreetMap', calculates directional fetch using a ray-casting approach, and optionally integrates National Hydrography Dataset ('NHD') data <https://www.usgs.gov/national-hydrography> for hydrological context including outlet and inlet locations. Can estimate lake depth from surface area using empirical relationships, and integrate historical weather data for cumulative wave energy calculations. Includes an optional interactive 'shiny' application for visualization.",
   "name": "lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points",
-  "codeRepository": "https://github.com/jeremylfarrell/lakefetch",
-  "issueTracker": "https://github.com/jeremylfarrell/lakefetch/issues",
+  "codeRepository": "https://github.com/ropensci/lakefetch",
+  "issueTracker": "https://github.com/ropensci/lakefetch/issues",
   "license": "https://spdx.org/licenses/MIT",
   "version": "0.1.3",
   "programmingLanguage": {
@@ -202,11 +202,11 @@
         }
       ],
       "name": "lakefetch: Calculate Fetch and Wave Exposure for Lake Sampling Points",
-      "url": "https://github.com/jeremylfarrell/lakefetch",
+      "url": "https://github.com/ropensci/lakefetch",
       "description": "R package version 0.1.3"
     }
   ],
-  "releaseNotes": "https://github.com/jeremylfarrell/lakefetch/blob/main/NEWS.md",
-  "readme": "https://github.com/jeremylfarrell/lakefetch/blob/main/README.md",
-  "contIntegration": "https://github.com/jeremylfarrell/lakefetch/actions/workflows/R-CMD-check.yaml"
+  "releaseNotes": "https://github.com/ropensci/lakefetch/blob/main/NEWS.md",
+  "readme": "https://github.com/ropensci/lakefetch/blob/main/README.md",
+  "contIntegration": "https://github.com/ropensci/lakefetch/actions/workflows/R-CMD-check.yaml"
 }

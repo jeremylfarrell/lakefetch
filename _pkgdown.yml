@@ -1,4 +1,4 @@
-url: https://jeremylfarrell.github.io/lakefetch/
+url: https://docs.ropensci.org/lakefetch/
 
 template:
   bootstrap: 5
@@ -10,7 +10,7 @@ navbar:
   components:
     github:
       icon: fa-github
-      href: https://github.com/jeremylfarrell/lakefetch
+      href: https://github.com/ropensci/lakefetch
 
 reference:
   - title: Package

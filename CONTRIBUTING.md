@@ -4,7 +4,7 @@ Thank you for your interest in contributing to lakefetch! This document provides
 
 ## Reporting Issues
 
-- Use the [GitHub issue tracker](https://github.com/jeremylfarrell/lakefetch/issues) to report bugs or suggest features.
+- Use the [GitHub issue tracker](https://github.com/ropensci/lakefetch/issues) to report bugs or suggest features.
 - For bug reports, please include a minimal reproducible example, your R version (`sessionInfo()`), and the error message.
 
 ## Pull Requests
@@ -23,7 +23,7 @@ Thank you for your interest in contributing to lakefetch! This document provides
 install.packages(c("devtools", "testthat", "roxygen2", "knitr", "rmarkdown"))
 
 # Clone and install
-# git clone https://github.com/jeremylfarrell/lakefetch.git
+# git clone https://github.com/ropensci/lakefetch.git
 devtools::load_all(".")
 
 # Run tests
